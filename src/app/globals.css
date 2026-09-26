@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
+/* ---- Internal Officers' Welfare & Community Portal — design tokens ---- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --husk: #ffffff; /* white surface */
+  --husk-deep: #f1f5f3; /* light grey section */
+  --field: #0a3b2c; /* dark Bangladesh green: header, footer, text, hero */
+  --field-soft: #12583f;
+  --brand: #006a4e; /* Bangladesh green: primary actions, links, accents */
+  --grain: #d21034; /* national red: sparing accent, alerts */
+  --grain-deep: #a50d28;
+  --river: #006a4e; /* kept in-palette (green) for secondary hero */
+  --stone: #5a6b63; /* muted grey-green, secondary text */
+  --line: #d9e2dd; /* light hairline */
+
+  --background: var(--husk);
+  --foreground: var(--field);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Literal values so Tailwind v4 generates the color utilities (bg-field,
+   text-husk, …). @theme with var() references does not emit utilities. */
+@theme {
+  --color-husk: #ffffff;
+  --color-husk-deep: #f1f5f3;
+  --color-field: #0a3b2c;
+  --color-field-soft: #12583f;
+  --color-brand: #006a4e;
+  --color-grain: #d21034;
+  --color-grain-deep: #a50d28;
+  --color-river: #006a4e;
+  --color-stone: #5a6b63;
+  --color-line: #d9e2dd;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Field-log label: the mono utility voice used for codes, eyebrows, captions */
+.log-label {
+  font-family: var(--font-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  color: var(--stone);
+}
+
+/* Paper grain: faint speckle so the husk never reads as flat cream */
+.paper-grain {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(23, 53, 42, 0.03) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 60%, rgba(23, 53, 42, 0.025) 0 1px, transparent 1px),
+    radial-gradient(circle at 45% 85%, rgba(23, 53, 42, 0.02) 0 1px, transparent 1px);
+  background-size: 7px 7px, 11px 11px, 13px 13px;
+}
+
+/* Contour lines — the topographic route motif behind dark sections */
+.contour {
+  background-image:
+    repeating-radial-gradient(
+      circle at 78% 18%,
+      transparent 0 38px,
+      rgba(255, 255, 255, 0.06) 38px 39px,
+      transparent 39px 78px
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.rise-1 {
+  animation-delay: 0.05s;
+}
+.rise-2 {
+  animation-delay: 0.18s;
+}
+.rise-3 {
+  animation-delay: 0.32s;
+}
+.rise-4 {
+  animation-delay: 0.46s;
+}
+
+:focus-visible {
+  outline: 2px solid var(--grain);
+  outline-offset: 3px;
+  border-radius: 2px;
 }

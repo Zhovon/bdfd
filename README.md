@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Internal Officers' Welfare & Community Portal — prototype
 
-## Getting Started
+A closed-membership welfare & community portal for departmental officers. The
+public landing is open; the core is members-only (login-gated). Officers register,
+an administrator verifies and approves them, and only then can they log in.
 
-First, run the development server:
+- **Stack:** Next.js 16 (App Router, TypeScript) · Tailwind v4 · Postgres (`pg`) · bcryptjs · nodemailer
+- **Palette:** Bangladesh green / white / national red
+
+## What's built
+
+**Auth & membership**
+- Public landing with Register / Log in
+- Registration (Full name, Official email, Mobile, Govt PDS/Service ID, Designation, Present posting, Password)
+- Admin approval workflow: pending → approve/reject → confirmation email → login enabled
+- Sessions (signed cookie), bcrypt password hashing, roles (admin / moderator / member)
+- Forgot / reset password (emailed token link, 1-hour expiry)
+- Profile edit with photo upload and blood-donor opt-in
+
+**Members' area (`/portal`, login-gated)**
+- Dashboard: fund total, blood-donor count, notices, module grid, latest notices
+- Travel & Tourism — tour notices + next-trip poll (one vote per member)
+- Welfare & Donation — support notices + **manual payment gateway** + donation reporting
+- Blood Directory — volunteer donors, searchable by blood group
+- Condolence & Support — remembrance notices
+- Association Information — committee info + neutral election notices
+
+**Manual payment gateway (no Stripe / no card processing)**
+- Members see mobile-banking numbers (bKash / Nagad / Rocket) and bank-transfer details
+- Members send money manually, then **report the donation** (amount, method, transaction reference)
+- Admin **verifies** each reported donation; verified total shows on the welfare page and dashboard
+- Admins edit all the account numbers / instructions from the admin Payments tab
+
+**Admin panel (`/admin`, role-gated, tabbed)**
+- Membership — dashboard counts, pending approvals, roles, block/unblock, delete, CSV export
+- Content — publish / delete notices per board
+- Polls — create polls (closes the previous), view live results
+- Donations — verify / reject reported donations, running fund totals
+- Payments — edit the mobile-banking & bank-transfer details shown to members
+
+**Security**
+- `robots.txt` disallows `/admin` and `/portal`; `noindex` on both
+- All server actions and the CSV route re-check auth server-side
+
+## Run it locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d   # 1. Postgres
+npm install            # 2. deps (first time)
+npm run dev            # 3. app
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 — all tables, the bootstrap admin, seed notices, a seed
+poll, and the four payment methods are created automatically on first run.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Accounts & config (`.env`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Bootstrap admin** — `ADMIN_EMAIL` / `ADMIN_PASSWORD` (defaults `admin@portal.gov.bd` / `admin-change-me`). Log in at **/login**, then visit **/admin**.
+- **Emails** — if no `SMTP_*` vars are set, approval / reset emails are logged to the server console (fine for local dev). Set `SMTP_HOST` etc. to send for real.
+- `SESSION_SECRET` signs the login cookie; `APP_URL` builds reset links — set both in production.
 
-## Learn More
+## Where things live
 
-To learn more about Next.js, take a look at the following resources:
+| What | File |
+| --- | --- |
+| Identity, modules, nav, blood groups | `src/lib/site.ts` |
+| Colours & tokens | `src/app/globals.css` |
+| DB schema + user model | `src/lib/db.ts` |
+| Content (posts, polls) | `src/lib/content.ts` |
+| Payments & donations | `src/lib/payments.ts` |
+| Sessions, guards, reset tokens | `src/lib/session.ts` · `src/lib/password.ts` |
+| Email | `src/lib/mailer.ts` |
+| Public landing / auth pages | `src/app/page.tsx` · `register/` · `login/` · `forgot/` · `reset/` |
+| Members' area | `src/app/portal/` (+ `layout.tsx`, `actions.ts`) |
+| Admin panel | `src/app/admin/` (`page.tsx`, `content/`, `polls/`, `donations/`, `payments/`, `export/`) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Not yet built (later, per SRS)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Photo galleries on the notice boards (uploads wired for avatars; extend to posts)
+- HTTPS/SSL (handled at deploy) · real captcha (swap the math check for Turnstile/hCaptcha)
 
-## Deploy on Vercel
+## Inspect the database
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+docker exec annapurna_db psql -U annapurna -d annapurna -c "SELECT id, full_name, official_email, role, status FROM users ORDER BY id;"
+docker exec annapurna_db psql -U annapurna -d annapurna -c "SELECT donor_name, amount, method, status FROM donations ORDER BY id DESC;"
+```

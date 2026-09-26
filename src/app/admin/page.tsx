@@ -1,0 +1,189 @@
+import Link from "next/link";
+import { listUsers, statusCounts, type User } from "@/lib/db";
+import { requireAdmin } from "@/lib/session";
+import { approveUser, rejectUser, blockUser, unblockUser, setRole, removeUser } from "./actions";
+
+const badge: Record<User["status"], string> = {
+  pending: "bg-grain/10 text-grain",
+  approved: "bg-brand/10 text-brand",
+  rejected: "bg-stone/15 text-stone",
+  blocked: "bg-stone/15 text-stone",
+};
+
+export default async function MembershipPage() {
+  await requireAdmin(); // moderators are redirected to /admin/content
+  const [counts, pending, members] = await Promise.all([
+    statusCounts(),
+    listUsers("pending"),
+    listUsers(),
+  ]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
+          Membership
+        </h2>
+        <Link
+          href="/admin/export"
+          prefetch={false}
+          className="rounded-full border border-field/25 px-5 py-2.5 text-sm font-semibold text-field transition-colors hover:bg-field hover:text-husk"
+        >
+          Download CSV
+        </Link>
+      </div>
+
+      {/* Dashboard */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Total members", value: counts.total },
+          { label: "Pending approval", value: counts.pending },
+          { label: "Approved", value: counts.approved },
+        ].map((c) => (
+          <div key={c.label} className="rounded-lg border border-line bg-husk-deep p-5">
+            <p className="log-label">{c.label}</p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold text-field tabular-nums">
+              {c.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Role reference */}
+      <div className="mt-6 grid gap-3 rounded-lg border border-line p-5 sm:grid-cols-3">
+        {[
+          { role: "Member", can: "Views modules, votes in polls, reports donations, edits own profile & blood listing." },
+          { role: "Moderator", can: "Everything a member can, plus posts notices, runs polls, and verifies donations." },
+          { role: "Admin", can: "Full control — approves members, sets roles, edits payment details, exports data." },
+        ].map((r) => (
+          <div key={r.role}>
+            <p className="log-label text-brand">{r.role}</p>
+            <p className="mt-1 text-sm text-stone">{r.can}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Pending approvals */}
+      <h3 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
+        Pending approvals <span className="text-stone">({pending.length})</span>
+      </h3>
+      {pending.length === 0 ? (
+        <p className="mt-4 text-stone">Nothing awaiting review.</p>
+      ) : (
+        <ul className="mt-5 grid gap-4">
+          {pending.map((u) => (
+            <li
+              key={u.id}
+              className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-line p-5"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-field">{u.full_name}</p>
+                <p className="text-sm text-stone">
+                  {u.designation} · {u.posting}
+                </p>
+                <p className="log-label mt-2 normal-case tracking-normal">
+                  {u.official_email} · {u.mobile} · ID: {u.service_id}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <form action={approveUser}>
+                  <input type="hidden" name="id" value={u.id} />
+                  <button className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-husk transition-transform hover:-translate-y-0.5">
+                    Approve
+                  </button>
+                </form>
+                <form action={rejectUser}>
+                  <input type="hidden" name="id" value={u.id} />
+                  <button className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-stone transition-colors hover:text-grain">
+                    Reject
+                  </button>
+                </form>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* All members */}
+      <h3 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
+        All members <span className="text-stone">({members.length})</span>
+      </h3>
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-line">
+              {["Name", "Posting", "Contact", "Role", "Status", "Actions"].map((h) => (
+                <th key={h} className="log-label whitespace-nowrap py-3 pr-4 font-normal">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((u) => (
+              <tr key={u.id} className="border-b border-line/60 align-top hover:bg-husk-deep/50">
+                <td className="py-3 pr-4 font-semibold text-field">{u.full_name}</td>
+                <td className="py-3 pr-4 text-field/90">
+                  {u.designation}
+                  <span className="block text-stone">{u.posting}</span>
+                </td>
+                <td className="py-3 pr-4 text-field/90">
+                  {u.official_email}
+                  <span className="block tabular-nums text-stone">{u.mobile}</span>
+                </td>
+                <td className="py-3 pr-4">
+                  {u.role === "admin" ? (
+                    <span className="capitalize text-stone">admin</span>
+                  ) : (
+                    <form action={setRole} className="flex items-center gap-1">
+                      <input type="hidden" name="id" value={u.id} />
+                      <select
+                        name="role"
+                        defaultValue={u.role}
+                        className="rounded border border-line bg-husk px-2 py-1 text-sm text-field"
+                      >
+                        <option value="member">member</option>
+                        <option value="moderator">moderator</option>
+                      </select>
+                      <button className="log-label text-brand hover:underline">set</button>
+                    </form>
+                  )}
+                </td>
+                <td className="py-3 pr-4">
+                  <span className={`log-label rounded-full px-2.5 py-1 ${badge[u.status]}`}>
+                    {u.status}
+                  </span>
+                </td>
+                <td className="py-3 pr-4">
+                  {u.role !== "admin" && (
+                    <div className="flex items-center gap-3">
+                      {u.status === "blocked" ? (
+                        <form action={unblockUser}>
+                          <input type="hidden" name="id" value={u.id} />
+                          <button className="log-label text-brand hover:underline">Unblock</button>
+                        </form>
+                      ) : (
+                        <form action={blockUser}>
+                          <input type="hidden" name="id" value={u.id} />
+                          <button className="log-label text-stone hover:text-grain hover:underline">
+                            Block
+                          </button>
+                        </form>
+                      )}
+                      <form action={removeUser}>
+                        <input type="hidden" name="id" value={u.id} />
+                        <button className="log-label text-stone hover:text-grain hover:underline">
+                          Delete
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
