@@ -3,14 +3,22 @@ import { getSessionUser } from "@/lib/session";
 import { listAllPosts } from "@/lib/content";
 import { donationTotals } from "@/lib/payments";
 import { listBloodDonors } from "@/lib/db";
+import { categoryMeta } from "@/lib/site";
 import PostBoard from "@/components/PostBoard";
 
 const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
+const rel = (d: Date) => {
+  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(d));
+};
 
 export default async function PortalDashboard() {
   const [user, posts, totals, donors] = await Promise.all([
     getSessionUser(),
-    listAllPosts(),
+    listAllPosts(), // newest first
     donationTotals("donation"), // welfare fund = donations only, not tour fees
     listBloodDonors(),
   ]);
@@ -21,6 +29,9 @@ export default async function PortalDashboard() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const latest = posts.slice(0, 4); // newest four as cards
+  const older = posts.slice(4); // the rest as a compact list
 
   return (
     <div>
@@ -51,7 +62,7 @@ export default async function PortalDashboard() {
         <Stat label="Notices" value={String(posts.length)} sub="posted" href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
       </div>
 
-      {/* Latest posts */}
+      {/* Latest posts — newest four as cards */}
       <div className="mt-12 flex items-baseline justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
           Latest posts
@@ -59,8 +70,39 @@ export default async function PortalDashboard() {
         {posts.length > 0 && <span className="log-label text-stone">{posts.length} total</span>}
       </div>
       <div className="mt-4">
-        <PostBoard posts={posts.slice(0, 4)} showCategory empty="No posts yet." />
+        <PostBoard posts={latest} showCategory empty="No posts yet." />
       </div>
+
+      {/* Older notices — the rest, compact, newest first */}
+      {older.length > 0 && (
+        <>
+          <h2 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
+            Older notices
+          </h2>
+          <ul className="mt-4 overflow-hidden rounded-xl border border-line">
+            {older.map((p) => {
+              const meta = categoryMeta(p.category);
+              return (
+                <li key={p.id} className="border-b border-line last:border-0">
+                  <Link
+                    href={`/portal/notice/${p.id}`}
+                    className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-husk-deep"
+                  >
+                    <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: meta.accent }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-field">{p.title}</span>
+                      <span className="log-label" style={{ color: meta.accent }}>
+                        {meta.label}
+                      </span>
+                    </span>
+                    <span className="log-label shrink-0 text-stone">{rel(p.created_at)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
