@@ -40,6 +40,8 @@ export type PostCard = PostPayment & {
   excerpt: string;
   cover: string | null;
   photoCount: number;
+  hasVideo: boolean;
+  hasPdf: boolean;
   created_at: Date;
 };
 
@@ -89,8 +91,19 @@ async function coverImages(postIds: number[]): Promise<Map<number, string[]>> {
   return map;
 }
 
+/** Which of the given posts have at least one video link. */
+async function videoPostIds(postIds: number[]): Promise<Set<number>> {
+  if (postIds.length === 0) return new Set();
+  const { rows } = await pool.query<{ post_id: number }>(
+    `SELECT DISTINCT post_id FROM post_videos WHERE post_id = ANY($1::int[])`,
+    [postIds],
+  );
+  return new Set(rows.map((r) => r.post_id));
+}
+
 async function toCards(rows: PostRow[]): Promise<PostCard[]> {
-  const covers = await coverImages(rows.map((r) => r.id));
+  const ids = rows.map((r) => r.id);
+  const [covers, withVideo] = await Promise.all([coverImages(ids), videoPostIds(ids)]);
   return rows.map((r) => {
     const imgs = covers.get(r.id) ?? (r.image_url ? [r.image_url] : []);
     return {
@@ -100,6 +113,8 @@ async function toCards(rows: PostRow[]): Promise<PostCard[]> {
       excerpt: excerptOf(r),
       cover: imgs[0] ?? null,
       photoCount: imgs.length,
+      hasVideo: withVideo.has(r.id),
+      hasPdf: !!r.pdf_url,
       created_at: r.created_at,
       ...paymentOf(r),
     };

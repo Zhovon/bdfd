@@ -71,10 +71,25 @@ export default function PostBoard({
                 className="pointer-events-none absolute inset-0 bg-gradient-to-t from-field/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                 aria-hidden
               />
-              {p.photoCount > 1 && (
-                <span className="log-label absolute bottom-2 right-2 rounded-full bg-field/80 px-2 py-1 text-husk">
-                  {p.photoCount} photos
-                </span>
+              {(p.photoCount > 1 || p.hasVideo || p.hasPdf) && (
+                <div className="absolute bottom-2 right-2 flex flex-wrap items-center justify-end gap-1.5">
+                  {p.photoCount > 1 && (
+                    <span className="log-label rounded-full bg-field/80 px-2 py-1 text-husk">
+                      {p.photoCount} photos
+                    </span>
+                  )}
+                  {p.hasVideo && (
+                    <span className="log-label inline-flex items-center gap-1 rounded-full bg-field/80 px-2 py-1 text-husk">
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+                        <path d="M2 1l6 4-6 4z" />
+                      </svg>
+                      Video
+                    </span>
+                  )}
+                  {p.hasPdf && (
+                    <span className="log-label rounded-full bg-field/80 px-2 py-1 text-husk">PDF</span>
+                  )}
+                </div>
               )}
               {isNew(p.created_at) && (
                 <span className="log-label absolute left-2 top-2 rounded-full bg-grain px-2.5 py-1 text-husk">
