@@ -115,12 +115,14 @@ SMTP_USER=resend
 SMTP_PASS=re_YOUR_RESEND_KEY
 MAIL_FROM=Officers' Portal <no-reply@YOURDOMAIN>
 
-# Image storage — REQUIRED in production (container disk is wiped each redeploy)
-R2_ACCOUNT_ID=YOUR_ACCOUNT_ID
-R2_ACCESS_KEY_ID=YOUR_ACCESS_KEY
-R2_SECRET_ACCESS_KEY=YOUR_SECRET
-R2_BUCKET=YOUR_BUCKET
-R2_PUBLIC_URL=https://images.YOURDOMAIN
+# Image storage (any S3-compatible store) — REQUIRED (container disk is wiped each redeploy)
+# Supabase Storage (no card) or Cloudflare R2 — see .env.example for both shapes.
+S3_ENDPOINT=YOUR_S3_ENDPOINT
+S3_REGION=YOUR_REGION
+S3_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+S3_SECRET_ACCESS_KEY=YOUR_SECRET
+S3_BUCKET=YOUR_BUCKET
+S3_PUBLIC_URL=YOUR_PUBLIC_BASE_URL
 ```
 
 `NODE_ENV=production` is set by Coolify automatically.

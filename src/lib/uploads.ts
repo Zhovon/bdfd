@@ -15,33 +15,46 @@ const CONTENT_TYPE: Record<string, string> = {
 };
 
 /**
- * Uploads go to Cloudflare R2 (S3-compatible) when it's configured; otherwise
- * they fall back to local disk so `npm run dev` works with no cloud account.
- * The five R2_* vars must all be set to enable object storage.
+ * Uploads go to any S3-compatible object store (Supabase Storage, Cloudflare R2,
+ * Backblaze B2, AWS S3…) when it's configured; otherwise they fall back to local
+ * disk so `npm run dev` works with no cloud account. Switch providers by changing
+ * env vars only — no code change.
+ *
+ *   S3_ENDPOINT           e.g. https://<ref>.storage.supabase.co/storage/v1/s3
+ *                          or   https://<account>.r2.cloudflarestorage.com
+ *   S3_REGION             provider region (Supabase: its project region; R2: auto)
+ *   S3_ACCESS_KEY_ID
+ *   S3_SECRET_ACCESS_KEY
+ *   S3_BUCKET
+ *   S3_PUBLIC_URL         public base for reads, e.g.
+ *                          https://<ref>.supabase.co/storage/v1/object/public/<bucket>
  */
-const R2_BUCKET = process.env.R2_BUCKET;
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/+$/, "");
-const r2Configured = Boolean(
-  R2_BUCKET &&
-    R2_PUBLIC_URL &&
-    process.env.R2_ACCOUNT_ID &&
-    process.env.R2_ACCESS_KEY_ID &&
-    process.env.R2_SECRET_ACCESS_KEY,
+const S3_BUCKET = process.env.S3_BUCKET;
+const S3_ENDPOINT = process.env.S3_ENDPOINT;
+const S3_PUBLIC_URL = process.env.S3_PUBLIC_URL?.replace(/\/+$/, "");
+const s3Configured = Boolean(
+  S3_BUCKET &&
+    S3_ENDPOINT &&
+    S3_PUBLIC_URL &&
+    process.env.S3_ACCESS_KEY_ID &&
+    process.env.S3_SECRET_ACCESS_KEY,
 );
 
-let _r2: S3Client | null = null;
-function r2(): S3Client {
-  if (!_r2) {
-    _r2 = new S3Client({
-      region: "auto",
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+let _s3: S3Client | null = null;
+function s3(): S3Client {
+  if (!_s3) {
+    _s3 = new S3Client({
+      region: process.env.S3_REGION || "auto",
+      endpoint: S3_ENDPOINT,
+      // Path-style addressing — required by Supabase Storage, and fine for R2/S3.
+      forcePathStyle: true,
       credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
       },
     });
   }
-  return _r2;
+  return _s3;
 }
 
 /**
@@ -61,18 +74,18 @@ export async function saveUpload(
   const buffer = Buffer.from(await file.arrayBuffer());
   const filename = `${basename}.${ext}`;
 
-  // Production: object storage (works on Vercel's read-only filesystem).
-  if (r2Configured) {
+  // Production: object storage (works on read-only serverless filesystems).
+  if (s3Configured) {
     const key = `uploads/${filename}`;
-    await r2().send(
+    await s3().send(
       new PutObjectCommand({
-        Bucket: R2_BUCKET,
+        Bucket: S3_BUCKET,
         Key: key,
         Body: buffer,
         ContentType: CONTENT_TYPE[ext] ?? "application/octet-stream",
       }),
     );
-    return `${R2_PUBLIC_URL}/${key}`;
+    return `${S3_PUBLIC_URL}/${key}`;
   }
 
   // Local dev fallback: write to /public/uploads.

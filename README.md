@@ -62,7 +62,7 @@ poll, and the four payment methods are created automatically on first run.
 - **Database** — `DATABASE_URL`. Local dev uses the docker Postgres (no TLS). Hosted providers need TLS, which the app enables automatically for any non-local host. On Vercel + **Supabase**, use the **pooled** connection string (Supavisor, port **6543**, transaction mode) — serverless needs the pooler, not the direct 5432 connection.
 - **Bootstrap admin** — `ADMIN_EMAIL` / `ADMIN_PASSWORD` (defaults `admin@portal.gov.bd` / `admin-change-me`). Log in at **/login**, then visit **/admin**.
 - **Emails** — if no `SMTP_*` vars are set, approval / reset emails are logged to the server console (fine for local dev). Set `SMTP_HOST` etc. to send for real.
-- **Image storage** — set the five `R2_*` vars (Cloudflare R2) to store uploads in object storage; unset, uploads fall back to local disk (dev only). Vercel's filesystem is read-only, so R2 is **required** for uploads to work in production.
+- **Image storage** — set the `S3_*` vars to store uploads in any S3-compatible object store (Supabase Storage, Cloudflare R2, Backblaze B2…); unset, uploads fall back to local disk (dev only). Vercel's filesystem is read-only, so object storage is **required** in production. Switch providers by changing env vars only. See `.env.example` for the Supabase Storage and R2 value shapes.
 - `SESSION_SECRET` signs the login cookie; `APP_URL` builds reset links — set both in production.
 
 ## Where things live
