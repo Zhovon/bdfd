@@ -22,7 +22,7 @@ import {
 import { getDonation, setDonationStatus, updatePaymentMethod, type DonationStatus } from "@/lib/payments";
 import { requireAdmin, requireStaff } from "@/lib/session";
 import { approvalEmail, rejectionEmail, sendMail } from "@/lib/mailer";
-import { saveUploads } from "@/lib/uploads";
+import { saveUploads, savePdf } from "@/lib/uploads";
 import { notifyUser, notifyApprovedMembers } from "@/lib/notifications";
 import { getModule } from "@/lib/site";
 
@@ -105,8 +105,22 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   }
 
   const stamp = Date.now();
-  // Cover photos (shown on the card and at the top of the post).
+  // Cover photos (the first is the main image; all appear in the gallery).
   const cover = await saveUploads(formData.getAll("cover"), `post-${stamp}-cover`);
+
+  // Video links — one per line, keep only http(s) URLs.
+  const videos = str(formData.get("videos"))
+    .split("\n")
+    .map((v) => v.trim())
+    .filter((v) => /^https?:\/\//i.test(v));
+
+  // Optional programme PDF, rendered after the body.
+  let pdfUrl: string | null = null;
+  try {
+    pdfUrl = await savePdf(formData.get("pdf"), `post-${stamp}-doc`);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Couldn't upload the PDF." };
+  }
 
   // Repeatable sections: block-heading-i / block-body-i / block-images-i.
   const blockCount = Number(str(formData.get("blockCount"))) || 0;
@@ -119,7 +133,7 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     blocks.push({ heading, body, images });
   }
 
-  await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, paymentMode, feeAmount });
+  await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, videos, pdfUrl, paymentMode, feeAmount });
 
   const mod = getModule(category);
   await notifyApprovedMembers(

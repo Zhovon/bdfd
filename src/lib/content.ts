@@ -18,6 +18,7 @@ type PostRow = {
   body: string;
   excerpt: string | null;
   image_url: string | null;
+  pdf_url: string | null;
   payment_mode: PaymentMode;
   fee_amount: string | null; // NUMERIC comes back as string from pg
   payment_open: boolean;
@@ -53,6 +54,8 @@ export type Post = PostPayment & {
   excerpt: string;
   cover: string[]; // cover gallery (images not tied to a section)
   blocks: PostBlock[];
+  videos: string[]; // external video links (YouTube/Vimeo/Facebook)
+  pdfUrl: string | null; // downloadable programme PDF
   created_at: Date;
 };
 
@@ -67,7 +70,7 @@ const paymentOf = (r: PostRow): PostPayment => ({
 
 /** The post columns every read needs (keeps SELECTs in sync). */
 const POST_COLS =
-  "id, category, title, body, excerpt, image_url, payment_mode, fee_amount, payment_open, created_at";
+  "id, category, title, body, excerpt, image_url, pdf_url, payment_mode, fee_amount, payment_open, created_at";
 
 /** Cover images = post_images with no block_id; falls back to legacy image_url. */
 async function coverImages(postIds: number[]): Promise<Map<number, string[]>> {
@@ -148,6 +151,11 @@ export async function getPost(id: number): Promise<Post | null> {
     images: imgs.filter((i) => i.block_id === b.id).map((i) => i.url),
   }));
 
+  const { rows: vids } = await pool.query<{ url: string }>(
+    `SELECT url FROM post_videos WHERE post_id = $1 ORDER BY sort_order, id`,
+    [id],
+  );
+
   return {
     id: p.id,
     category: p.category,
@@ -156,6 +164,8 @@ export async function getPost(id: number): Promise<Post | null> {
     excerpt: excerptOf(p),
     cover: coverFallback,
     blocks,
+    videos: vids.map((v) => v.url),
+    pdfUrl: p.pdf_url,
     created_at: p.created_at,
     ...paymentOf(p),
   };
@@ -168,6 +178,8 @@ export type NewPost = {
   authorId: number;
   cover: string[];
   blocks: { heading: string; body: string; images: string[] }[];
+  videos: string[];
+  pdfUrl: string | null;
   paymentMode: PaymentMode;
   feeAmount: number | null;
 };
@@ -177,11 +189,19 @@ export async function createPost(input: NewPost): Promise<number> {
   // A participation post keeps its fee; other modes never carry one.
   const fee = input.paymentMode === "participation" ? input.feeAmount : null;
   const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO posts (category, title, body, excerpt, author_id, image_url, payment_mode, fee_amount)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-    [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null, input.paymentMode, fee],
+    `INSERT INTO posts (category, title, body, excerpt, author_id, image_url, pdf_url, payment_mode, fee_amount)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null, input.pdfUrl, input.paymentMode, fee],
   );
   const postId = rows[0].id;
+
+  for (let i = 0; i < input.videos.length; i++) {
+    await pool.query(`INSERT INTO post_videos (post_id, url, sort_order) VALUES ($1,$2,$3)`, [
+      postId,
+      input.videos[i],
+      i,
+    ]);
+  }
 
   for (let i = 0; i < input.cover.length; i++) {
     await pool.query(

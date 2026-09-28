@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Gallery from "@/components/Gallery";
+import PostMedia from "@/components/PostMedia";
 import PaymentCTA from "@/components/PaymentCTA";
 import { requireUser } from "@/lib/session";
 import { getPost } from "@/lib/content";
@@ -52,15 +52,8 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
 
       {totals && <PaymentCTA post={post} totals={totals} />}
 
-      {/* Photo gallery — between the title and the body */}
-      {photos.length > 0 && (
-        <section className="mt-8">
-          <p className="log-label text-brand">
-            Photos <span className="text-stone">· {photos.length}</span>
-          </p>
-          <Gallery images={photos} title={post.title} />
-        </section>
-      )}
+      {/* Main image + gallery button (photos & videos) between title and body */}
+      <PostMedia images={photos} videos={post.videos} title={post.title} />
 
       <hr className="rule mt-10" />
 
@@ -88,6 +81,31 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
         post.body && (
           <p className="mt-8 whitespace-pre-line leading-relaxed text-field/85">{post.body}</p>
         )
+      )}
+
+      {/* Programme PDF — embedded viewer + download, after the body */}
+      {post.pdfUrl && (
+        <section className="mt-12">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
+              Programme details
+            </h2>
+            <a
+              href={post.pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="inline-flex items-center gap-2 rounded-full border border-field/30 px-5 py-2.5 text-sm font-semibold text-field transition-colors hover:bg-field hover:text-husk"
+            >
+              Download PDF ↓
+            </a>
+          </div>
+          <iframe
+            src={post.pdfUrl}
+            title={`${post.title} programme`}
+            className="mt-4 h-[80vh] w-full rounded-xl border border-line"
+          />
+        </section>
       )}
     </article>
   );

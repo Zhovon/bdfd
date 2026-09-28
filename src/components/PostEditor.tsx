@@ -75,9 +75,28 @@ export default function PostEditor() {
 
       <label>
         <span className="log-label flex items-center gap-2 text-field">
-          Cover photos <span className="text-stone">· optional</span>
+          Photos <span className="text-stone">· optional · first one is the main image</span>
         </span>
         <input name="cover" type="file" accept="image/*" multiple className={fileInput} />
+      </label>
+
+      <label>
+        <span className="log-label flex items-center gap-2 text-field">
+          Video links <span className="text-stone">· optional · one per line (YouTube, Vimeo, Facebook)</span>
+        </span>
+        <textarea
+          name="videos"
+          rows={2}
+          placeholder="https://www.youtube.com/watch?v=…"
+          className={textInput}
+        />
+      </label>
+
+      <label>
+        <span className="log-label flex items-center gap-2 text-field">
+          Programme PDF <span className="text-stone">· optional · shown after the text</span>
+        </span>
+        <input name="pdf" type="file" accept="application/pdf" className={fileInput} />
       </label>
 
       {/* Payment intent — adds a Participate / Donate button to the notice */}

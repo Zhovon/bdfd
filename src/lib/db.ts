@@ -52,7 +52,7 @@ let schemaReady: Promise<void> | null = null;
 
 // Bump when the DDL below changes so the next deploy re-runs the migration once.
 // Between changes, cold serverless instances skip the ~20 DDL round-trips.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
@@ -109,6 +109,8 @@ export function ensureSchema(): Promise<void> {
 
       // Blog-style posts: a short excerpt for cards + ordered content sections.
       await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS excerpt TEXT`);
+      // A downloadable PDF (the detailed programme) rendered after the body text.
+      await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
 
       // A post can carry a payment intent:
       //   none          — informational only (default)
@@ -152,6 +154,19 @@ export function ensureSchema(): Promise<void> {
       );
       await pool.query(
         `CREATE INDEX IF NOT EXISTS post_images_block_idx ON post_images(block_id, sort_order)`,
+      );
+
+      // External video links (YouTube/Vimeo/Facebook) shown in the post gallery.
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS post_videos (
+          id         SERIAL PRIMARY KEY,
+          post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+          url        TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0
+        )
+      `);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS post_videos_post_idx ON post_videos(post_id, sort_order)`,
       );
 
       await pool.query(`
