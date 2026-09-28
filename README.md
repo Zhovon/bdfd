@@ -61,6 +61,7 @@ poll, and the four payment methods are created automatically on first run.
 
 - **Bootstrap admin** — `ADMIN_EMAIL` / `ADMIN_PASSWORD` (defaults `admin@portal.gov.bd` / `admin-change-me`). Log in at **/login**, then visit **/admin**.
 - **Emails** — if no `SMTP_*` vars are set, approval / reset emails are logged to the server console (fine for local dev). Set `SMTP_HOST` etc. to send for real.
+- **Image storage** — set the five `R2_*` vars (Cloudflare R2) to store uploads in object storage; unset, uploads fall back to local disk (dev only). Vercel's filesystem is read-only, so R2 is **required** for uploads to work in production.
 - `SESSION_SECRET` signs the login cookie; `APP_URL` builds reset links — set both in production.
 
 ## Where things live
