@@ -7,11 +7,10 @@ const fmtMon = (d: Date) => new Intl.DateTimeFormat("en-GB", { month: "short" })
 const isNew = (d: Date) => Date.now() - new Date(d).getTime() < 7 * 24 * 3600 * 1000;
 const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
 
-/** Short label for a post's payment intent, or null if it takes no payment. */
-function paymentLabel(p: PostCard): string | null {
+/** Text for the card's payment button. */
+function payButtonLabel(p: PostCard): string {
   if (p.paymentMode === "participation") return p.feeAmount ? `Participate · ${taka(p.feeAmount)}` : "Participate";
-  if (p.paymentMode === "donation") return "Open donation";
-  return null;
+  return "Donate";
 }
 
 /** Board list — each notice is a card linking to its full post. */
@@ -36,10 +35,12 @@ export default function PostBoard({
     <div className="grid gap-4 sm:grid-cols-2">
       {posts.map((p) => {
         const meta = categoryMeta(p.category);
+        const hasPayment = p.paymentMode !== "none";
         return (
-          <Link
+          // The whole card links to the notice via a stretched link on the title;
+          // the payment button sits above it (z-10) with its own destination.
+          <div
             key={p.id}
-            href={`/portal/notice/${p.id}`}
             className="lift group relative flex flex-col overflow-hidden rounded-xl border border-line bg-husk shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]"
           >
             {/* Category accent — a fine top rule that sweeps in on hover */}
@@ -94,29 +95,35 @@ export default function PostBoard({
                 </span>
               </div>
               <h3 className="mt-1.5 font-[family-name:var(--font-display)] text-xl font-bold leading-snug text-field">
-                {p.title}
+                <Link
+                  href={`/portal/notice/${p.id}`}
+                  className="transition-colors after:absolute after:inset-0 after:content-[''] group-hover:text-brand"
+                >
+                  {p.title}
+                </Link>
               </h3>
               {p.excerpt && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-stone">{p.excerpt}</p>}
-              <div className="mt-3 flex items-center justify-between gap-2">
+
+              <div className="mt-4 flex items-center justify-between gap-2">
                 <span className="log-label inline-flex items-center gap-1 text-brand">
                   Read more <span className="transition-transform group-hover:translate-x-0.5">→</span>
                 </span>
-                {(() => {
-                  const label = paymentLabel(p);
-                  if (!label) return null;
-                  return (
-                    <span
-                      className={`log-label rounded-full px-2.5 py-1 ${
-                        p.paymentOpen ? "bg-brand/10 text-brand" : "bg-stone/15 text-stone"
-                      }`}
+                {hasPayment &&
+                  (p.paymentOpen ? (
+                    <Link
+                      href={`/portal/pay/${p.id}`}
+                      className="relative z-10 shrink-0 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-husk transition-transform hover:-translate-y-0.5"
                     >
-                      {p.paymentOpen ? label : "Closed"}
+                      {payButtonLabel(p)}
+                    </Link>
+                  ) : (
+                    <span className="log-label shrink-0 rounded-full bg-stone/15 px-3 py-1.5 text-stone">
+                      Closed
                     </span>
-                  );
-                })()}
+                  ))}
               </div>
             </div>
-          </Link>
+          </div>
         );
       })}
     </div>
