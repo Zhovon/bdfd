@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { login, type LoginState } from "@/app/actions";
+import PasswordInput from "@/components/PasswordInput";
 
 export default function LoginForm({ notice }: { notice?: string }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
@@ -38,12 +39,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
             Forgot?
           </Link>
         </span>
-        <input
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          className="mt-2 w-full border-b-2 border-line bg-transparent pb-2 text-lg text-field outline-none transition-colors focus:border-brand"
-        />
+        <PasswordInput name="password" autoComplete="current-password" />
       </label>
 
       {state?.error && <p className="mt-4 text-sm text-grain">{state.error}</p>}

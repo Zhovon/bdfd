@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { registerUser, type RegisterState } from "@/app/actions";
 import Turnstile from "@/components/Turnstile";
+import PasswordInput from "@/components/PasswordInput";
 
 type Key =
   | "fullName"
@@ -51,14 +52,23 @@ export default function RegisterForm({ siteKey }: { siteKey: string }) {
             {f.label}
             {f.hint && <span className="text-stone">· {f.hint}</span>}
           </span>
-          <input
-            name={f.key}
-            type={f.type ?? "text"}
-            required
-            autoComplete="off"
-            className="mt-2 w-full border-b-2 border-line bg-transparent pb-2 text-lg text-field outline-none transition-colors focus:border-brand"
-            aria-invalid={Boolean(state?.fieldErrors?.[f.key])}
-          />
+          {f.type === "password" ? (
+            <PasswordInput
+              name={f.key}
+              required
+              autoComplete="new-password"
+              aria-invalid={Boolean(state?.fieldErrors?.[f.key])}
+            />
+          ) : (
+            <input
+              name={f.key}
+              type={f.type ?? "text"}
+              required
+              autoComplete="off"
+              className="mt-2 w-full border-b-2 border-line bg-transparent pb-2 text-lg text-field outline-none transition-colors focus:border-brand"
+              aria-invalid={Boolean(state?.fieldErrors?.[f.key])}
+            />
+          )}
           {state?.fieldErrors?.[f.key] && (
             <span className="mt-1 block text-sm text-grain">{state.fieldErrors[f.key]}</span>
           )}
