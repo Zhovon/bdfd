@@ -19,6 +19,12 @@ export type Module = {
 /** The members-only modules (SRS Module B). Public pages only preview these. */
 export const modules: Module[] = [
   {
+    code: "ASN",
+    slug: "association",
+    title: "Association Information",
+    blurb: "About the association and committee, official notices, and neutral election information.",
+  },
+  {
     code: "TRV",
     slug: "travel",
     title: "Travel & Tourism",
@@ -31,22 +37,16 @@ export const modules: Module[] = [
     blurb: "Support notices for colleagues in need — contribute to any appeal directly.",
   },
   {
-    code: "BLD",
-    slug: "blood",
-    title: "Blood Directory",
-    blurb: "Volunteer donor officers, searchable by blood group.",
-  },
-  {
     code: "CND",
     slug: "condolence",
     title: "Condolence & Support",
     blurb: "Remembering colleagues and standing by their families.",
   },
   {
-    code: "ASN",
-    slug: "association",
-    title: "Association Information",
-    blurb: "About the association and committee, official notices, and neutral election information.",
+    code: "BLD",
+    slug: "blood",
+    title: "Blood Directory",
+    blurb: "Volunteer donor officers, searchable by blood group.",
   },
 ];
 
