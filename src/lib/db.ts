@@ -5,11 +5,21 @@ import { hashPassword } from "@/lib/password";
 // Reuse the pool across hot reloads in dev so we don't exhaust connections.
 const globalForDb = globalThis as unknown as { _portalPool?: Pool };
 
+const connectionString = process.env.DATABASE_URL;
+
+// Local docker Postgres speaks no TLS; hosted providers (Supabase, Neon, …)
+// require it. Enable SSL whenever the host isn't local. `rejectUnauthorized:
+// false` encrypts in transit without pinning the provider's CA — harden to a
+// CA-verified connection later if needed.
+const isRemoteDb =
+  !!connectionString && !/@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(connectionString);
+
 export const pool =
   globalForDb._portalPool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     max: 5,
+    ssl: isRemoteDb ? { rejectUnauthorized: false } : undefined,
   });
 
 if (process.env.NODE_ENV !== "production") {
