@@ -63,12 +63,20 @@ export default async function AdminContent() {
                     {p.excerpt && <p className="mt-0.5 line-clamp-2 text-sm text-stone">{p.excerpt}</p>}
                   </div>
                 </div>
-                <form action={removePost}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button className="log-label shrink-0 text-stone hover:text-grain hover:underline">
-                    Delete
-                  </button>
-                </form>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Link
+                    href={`/admin/content/${p.id}/edit`}
+                    className="log-label text-brand hover:underline"
+                  >
+                    Edit
+                  </Link>
+                  <form action={removePost}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <button className="log-label text-stone hover:text-grain hover:underline">
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </li>
             );
           })}

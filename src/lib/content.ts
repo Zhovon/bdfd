@@ -247,6 +247,97 @@ export async function deletePost(id: number): Promise<void> {
   await pool.query(`DELETE FROM posts WHERE id = $1`, [id]);
 }
 
+/** All of a post's images with their ids (for the edit UI). */
+export async function getPostImages(id: number): Promise<{ id: number; url: string }[]> {
+  await ensureSchema();
+  const { rows } = await pool.query<{ id: number; url: string }>(
+    `SELECT id, url FROM post_images WHERE post_id = $1 ORDER BY sort_order, id`,
+    [id],
+  );
+  return rows;
+}
+
+export type EditPost = {
+  category: PostCategory;
+  title: string;
+  excerpt: string;
+  newCover: string[]; // newly uploaded photos to append
+  removeImageIds: number[]; // existing image ids to delete
+  blocks: { heading: string; body: string }[];
+  videos: string[];
+  newPdfUrl: string | null; // replacement PDF, if uploaded
+  removePdf: boolean;
+  paymentMode: PaymentMode;
+  feeAmount: number | null;
+};
+
+export async function updatePost(id: number, input: EditPost): Promise<void> {
+  await ensureSchema();
+  const fee = input.paymentMode === "participation" ? input.feeAmount : null;
+
+  // Flatten any section-tied images into the post-level gallery so recreating
+  // the text blocks below won't cascade-delete them.
+  await pool.query(`UPDATE post_images SET block_id = NULL WHERE post_id = $1`, [id]);
+
+  // Remove images the editor marked for deletion.
+  if (input.removeImageIds.length > 0) {
+    await pool.query(`DELETE FROM post_images WHERE post_id = $1 AND id = ANY($2::int[])`, [
+      id,
+      input.removeImageIds,
+    ]);
+  }
+
+  // Append newly uploaded photos after the existing ones.
+  const { rows: maxRow } = await pool.query<{ max: number | null }>(
+    `SELECT MAX(sort_order) AS max FROM post_images WHERE post_id = $1`,
+    [id],
+  );
+  let order = (maxRow[0]?.max ?? -1) + 1;
+  for (const url of input.newCover) {
+    await pool.query(
+      `INSERT INTO post_images (post_id, url, sort_order, block_id) VALUES ($1,$2,$3,NULL)`,
+      [id, url, order++],
+    );
+  }
+
+  // PDF: replace if a new one was uploaded, else clear if removed, else keep.
+  if (input.newPdfUrl) {
+    await pool.query(`UPDATE posts SET pdf_url = $2 WHERE id = $1`, [id, input.newPdfUrl]);
+  } else if (input.removePdf) {
+    await pool.query(`UPDATE posts SET pdf_url = NULL WHERE id = $1`, [id]);
+  }
+
+  // Core fields + the card thumbnail (first remaining image).
+  const { rows: firstImg } = await pool.query<{ url: string }>(
+    `SELECT url FROM post_images WHERE post_id = $1 ORDER BY sort_order, id LIMIT 1`,
+    [id],
+  );
+  await pool.query(
+    `UPDATE posts SET category=$2, title=$3, excerpt=$4, image_url=$5, payment_mode=$6, fee_amount=$7 WHERE id=$1`,
+    [id, input.category, input.title, input.excerpt, firstImg[0]?.url ?? null, input.paymentMode, fee],
+  );
+
+  // Replace text blocks.
+  await pool.query(`DELETE FROM post_blocks WHERE post_id = $1`, [id]);
+  for (let i = 0; i < input.blocks.length; i++) {
+    const b = input.blocks[i];
+    await pool.query(
+      `INSERT INTO post_blocks (post_id, heading, body, sort_order) VALUES ($1,$2,$3,$4)`,
+      [id, b.heading || null, b.body, i],
+    );
+  }
+
+  // Replace video links.
+  await pool.query(`DELETE FROM post_videos WHERE post_id = $1`, [id]);
+  for (let i = 0; i < input.videos.length; i++) {
+    await pool.query(`INSERT INTO post_videos (post_id, url, sort_order) VALUES ($1,$2,$3)`, [
+      id,
+      input.videos[i],
+      i,
+    ]);
+  }
+}
+
 /* --------------------------------- Polls -------------------------------- */
 
 export type PollResult = {

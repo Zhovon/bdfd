@@ -11,6 +11,7 @@ import {
 } from "@/lib/db";
 import {
   createPost,
+  updatePost,
   deletePost,
   createPoll,
   closePoll,
@@ -143,6 +144,77 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   revalidatePath("/admin/content");
   revalidatePath(`/portal/${category}`);
   return { ok: true, message: "Notice published." };
+}
+
+export async function editPost(_prev: PostFormState, formData: FormData): Promise<PostFormState> {
+  await requireStaff();
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Unknown post." };
+
+  const category = str(formData.get("category")) as PostCategory;
+  const title = str(formData.get("title"));
+  const excerpt = str(formData.get("excerpt"));
+  if (!["travel", "welfare", "condolence", "association"].includes(category))
+    return { ok: false, message: "Choose a board." };
+  if (!title) return { ok: false, message: "Give the notice a title." };
+
+  const paymentMode = (str(formData.get("paymentMode")) || "none") as PaymentMode;
+  if (!["none", "participation", "donation"].includes(paymentMode))
+    return { ok: false, message: "Choose a valid payment mode." };
+  let feeAmount: number | null = null;
+  if (paymentMode === "participation") {
+    feeAmount = Number(str(formData.get("feeAmount")));
+    if (!Number.isFinite(feeAmount) || feeAmount <= 0)
+      return { ok: false, message: "Enter a participation fee greater than zero." };
+  }
+
+  const stamp = Date.now();
+  const newCover = await saveUploads(formData.getAll("cover"), `post-${id}-${stamp}`);
+
+  const videos = str(formData.get("videos"))
+    .split("\n")
+    .map((v) => v.trim())
+    .filter((v) => /^https?:\/\//i.test(v));
+
+  const removeImageIds = formData
+    .getAll("removeImage")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+  const removePdf = formData.get("removePdf") === "on";
+  let newPdfUrl: string | null = null;
+  try {
+    newPdfUrl = await savePdf(formData.get("pdf"), `post-${id}-${stamp}-doc`);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Couldn't upload the PDF." };
+  }
+
+  const blockCount = Number(str(formData.get("blockCount"))) || 0;
+  const blocks: { heading: string; body: string }[] = [];
+  for (let i = 0; i < blockCount; i++) {
+    const heading = str(formData.get(`block-heading-${i}`));
+    const body = str(formData.get(`block-body-${i}`));
+    if (!heading && !body) continue;
+    blocks.push({ heading, body });
+  }
+
+  await updatePost(id, {
+    category,
+    title,
+    excerpt,
+    newCover,
+    removeImageIds,
+    blocks,
+    videos,
+    newPdfUrl,
+    removePdf,
+    paymentMode,
+    feeAmount,
+  });
+
+  revalidatePath("/admin/content");
+  revalidatePath(`/portal/${category}`);
+  revalidatePath(`/portal/notice/${id}`);
+  return { ok: true, message: "Changes saved." };
 }
 
 export async function removePost(formData: FormData) {

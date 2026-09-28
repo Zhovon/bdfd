@@ -4,7 +4,7 @@
  */
 export const org = {
   name: "Internal Officers' Welfare & Community Portal",
-  short: "Welfare Portal",
+  short: "Tour & Travel Portal",
   monogram: "IO", // Internal Officers
   tagline: "Welfare and community for officers of the service",
 };
