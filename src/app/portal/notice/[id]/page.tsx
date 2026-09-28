@@ -20,6 +20,12 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
   const meta = categoryMeta(post.category);
   const totals = post.paymentMode === "none" ? null : await postTotals(post.id);
 
+  // Every photo on the post — cover plus any uploaded to sections — gathered
+  // into one gallery shown between the title and the body text.
+  const photos = [...post.cover, ...post.blocks.flatMap((b) => b.images)];
+  // Sections that carry text (their images moved into the gallery above).
+  const textBlocks = post.blocks.filter((b) => b.heading || b.body);
+
   return (
     <article className="mx-auto max-w-3xl">
       <Link
@@ -46,14 +52,22 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
 
       {totals && <PaymentCTA post={post} totals={totals} />}
 
-      {post.cover.length > 0 && <Gallery images={post.cover} title={post.title} />}
+      {/* Photo gallery — between the title and the body */}
+      {photos.length > 0 && (
+        <section className="mt-8">
+          <p className="log-label text-brand">
+            Photos <span className="text-stone">· {photos.length}</span>
+          </p>
+          <Gallery images={photos} title={post.title} />
+        </section>
+      )}
 
       <hr className="rule mt-10" />
 
-      {/* Sections */}
-      {post.blocks.length > 0 ? (
+      {/* Body text */}
+      {textBlocks.length > 0 ? (
         <div className="mt-10 grid gap-10">
-          {post.blocks.map((b, i) => (
+          {textBlocks.map((b, i) => (
             <section key={b.id} className={i > 0 ? "border-t border-line pt-10" : ""}>
               {b.heading && (
                 <h2 className="flex items-baseline gap-3 font-[family-name:var(--font-display)] text-2xl font-bold text-field">
@@ -66,7 +80,6 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
               {b.body && (
                 <p className="mt-3 whitespace-pre-line leading-relaxed text-field/85">{b.body}</p>
               )}
-              {b.images.length > 0 && <Gallery images={b.images} title={b.heading ?? post.title} />}
             </section>
           ))}
         </div>
