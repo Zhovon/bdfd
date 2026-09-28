@@ -34,7 +34,7 @@ export const modules: Module[] = [
     code: "WLF",
     slug: "welfare",
     title: "Welfare",
-    blurb: "Support notices for colleagues in need — contribute to any appeal directly.",
+    blurb: "Support notices for colleagues in need and welfare matters.",
   },
   {
     code: "CND",

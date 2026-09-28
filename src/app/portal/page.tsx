@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/session";
 import { listAllPosts } from "@/lib/content";
-import { donationTotals } from "@/lib/payments";
 import { listBloodDonors } from "@/lib/db";
 import { categoryMeta } from "@/lib/site";
 import PostBoard from "@/components/PostBoard";
 
-const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
 const rel = (d: Date) => {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
   if (days <= 0) return "today";
@@ -16,12 +14,12 @@ const rel = (d: Date) => {
 };
 
 export default async function PortalDashboard() {
-  const [user, posts, totals, donors] = await Promise.all([
+  const [user, posts, donors] = await Promise.all([
     getSessionUser(),
     listAllPosts(), // newest first
-    donationTotals("donation"), // welfare fund = donations only, not tour fees
     listBloodDonors(),
   ]);
+  const tourCount = posts.filter((p) => p.category === "travel").length;
   const firstName = user?.full_name.split(" ")[0] ?? "Officer";
   const initials = (user?.full_name ?? "O")
     .split(" ")
@@ -57,8 +55,8 @@ export default async function PortalDashboard() {
 
       {/* Stats */}
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Stat label="Welfare fund" value={taka(totals.verified)} sub="verified" href="/portal/welfare" icon={<HeartIcon />} accent="#D21034" />
-        <Stat label="Blood donors" value={String(donors.length)} sub="on call" href="/portal/blood" icon={<DropIcon />} accent="#006A4E" />
+        <Stat label="Tours" value={String(tourCount)} sub="programmes" href="/portal/travel" icon={<PinIcon />} accent="#006A4E" />
+        <Stat label="Blood donors" value={String(donors.length)} sub="on call" href="/portal/blood" icon={<DropIcon />} accent="#D21034" />
         <Stat label="Notices" value={String(posts.length)} sub="posted" href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
       </div>
 
@@ -139,10 +137,11 @@ function Stat({
   );
 }
 
-function HeartIcon() {
+function PinIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M12 20s-7-4.35-7-9.5A3.5 3.5 0 0 1 12 7a3.5 3.5 0 0 1 7 3.5C19 15.65 12 20 12 20Z" fill="currentColor" opacity="0.9" />
+      <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" fill="currentColor" opacity="0.9" />
+      <circle cx="12" cy="10" r="2.4" fill="var(--husk-deep)" />
     </svg>
   );
 }
