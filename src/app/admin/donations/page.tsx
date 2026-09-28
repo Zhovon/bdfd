@@ -18,7 +18,7 @@ export default async function AdminDonations() {
     <div>
       <div className="flex flex-wrap items-center gap-6">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Donations
+          Payments
         </h2>
         <span className="log-label">Verified {taka(totals.verified)} · Awaiting {taka(totals.reported)}</span>
       </div>
@@ -27,7 +27,7 @@ export default async function AdminDonations() {
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              {["Donor", "Amount", "Method", "Reference", "Date", "Status", "Actions"].map((h) => (
+              {["Donor", "For", "Amount", "Method", "Reference", "Date", "Status", "Actions"].map((h) => (
                 <th key={h} className="log-label whitespace-nowrap py-3 pr-4 font-normal">
                   {h}
                 </th>
@@ -37,8 +37,8 @@ export default async function AdminDonations() {
           <tbody>
             {donations.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-10 text-center text-stone">
-                  No donations reported yet.
+                <td colSpan={8} className="py-10 text-center text-stone">
+                  No payments reported yet.
                 </td>
               </tr>
             ) : (
@@ -47,6 +47,16 @@ export default async function AdminDonations() {
                   <td className="py-3 pr-4 font-semibold text-field">
                     {d.donor_name}
                     {d.note && <span className="block font-normal text-stone">{d.note}</span>}
+                  </td>
+                  <td className="py-3 pr-4 text-field/90">
+                    <span
+                      className={`log-label rounded-full px-2 py-0.5 ${
+                        d.kind === "participation" ? "bg-brand/10 text-brand" : "bg-grain/10 text-grain"
+                      }`}
+                    >
+                      {d.kind === "participation" ? "Tour" : "Welfare"}
+                    </span>
+                    {d.post_title && <span className="mt-1 block text-stone">{d.post_title}</span>}
                   </td>
                   <td className="py-3 pr-4 tabular-nums font-semibold text-field">{taka(d.amount)}</td>
                   <td className="py-3 pr-4 text-field/90">{d.method}</td>

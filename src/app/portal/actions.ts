@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
-import { castVote } from "@/lib/content";
-import { createDonation } from "@/lib/payments";
+import { castVote, getPost } from "@/lib/content";
+import { createDonation, type ContributionKind } from "@/lib/payments";
 import { updateProfile } from "@/lib/db";
 import { saveUpload } from "@/lib/uploads";
 import { markAllRead } from "@/lib/notifications";
@@ -34,10 +34,26 @@ export type DonationState = { ok: boolean; message: string } | null;
 
 export async function reportDonation(_prev: DonationState, formData: FormData): Promise<DonationState> {
   const user = await requireUser();
-  const amount = Number(str(formData.get("amount")));
+
+  // Every payment is made against a post; the post is the source of truth for
+  // what kind of payment this is and — for a tour — how much it costs.
+  const postId = Number(formData.get("postId"));
+  if (!Number.isInteger(postId) || postId <= 0)
+    return { ok: false, message: "We couldn't tell which notice this payment is for." };
+  const post = await getPost(postId);
+  if (!post || post.paymentMode === "none")
+    return { ok: false, message: "This notice isn't accepting payments." };
+  if (!post.paymentOpen)
+    return { ok: false, message: "Payments for this notice are now closed." };
+
+  const kind: ContributionKind = post.paymentMode === "participation" ? "participation" : "donation";
   const method = str(formData.get("method"));
   const transactionRef = str(formData.get("transactionRef"));
   const note = str(formData.get("note"));
+
+  // Participation is the fixed fee set on the post (client amount is ignored);
+  // a donation is whatever the member chose to give.
+  const amount = kind === "participation" ? post.feeAmount ?? 0 : Number(str(formData.get("amount")));
 
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: "Enter a valid amount." };
   if (!method) return { ok: false, message: "Choose how you paid." };
@@ -45,14 +61,21 @@ export async function reportDonation(_prev: DonationState, formData: FormData): 
 
   await createDonation({
     userId: user.id,
+    postId,
+    kind,
     donorName: user.full_name,
     amount,
     method,
     transactionRef,
     note: note || null,
   });
-  revalidatePath("/portal/welfare");
-  return { ok: true, message: "Thank you — your donation is recorded and awaiting verification by the administration." };
+  revalidatePath(`/portal/notice/${postId}`);
+  revalidatePath(`/portal/${post.category}`);
+  const thanks =
+    kind === "participation"
+      ? "Thank you — your participation payment is recorded and awaiting verification by the administration."
+      : "Thank you — your donation is recorded and awaiting verification by the administration.";
+  return { ok: true, message: thanks };
 }
 
 /* -------------------------------- Profile ------------------------------- */

@@ -17,6 +17,7 @@ import {
   reopenPoll,
   deletePoll,
   type PostCategory,
+  type PaymentMode,
 } from "@/lib/content";
 import { getDonation, setDonationStatus, updatePaymentMethod, type DonationStatus } from "@/lib/payments";
 import { requireAdmin, requireStaff } from "@/lib/session";
@@ -92,6 +93,17 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     return { ok: false, message: "Choose a board." };
   if (!title) return { ok: false, message: "Give the notice a title." };
 
+  // Payment intent (defaults to an informational notice).
+  const paymentMode = (str(formData.get("paymentMode")) || "none") as PaymentMode;
+  if (!["none", "participation", "donation"].includes(paymentMode))
+    return { ok: false, message: "Choose a valid payment mode." };
+  let feeAmount: number | null = null;
+  if (paymentMode === "participation") {
+    feeAmount = Number(str(formData.get("feeAmount")));
+    if (!Number.isFinite(feeAmount) || feeAmount <= 0)
+      return { ok: false, message: "Enter a participation fee greater than zero." };
+  }
+
   const stamp = Date.now();
   // Cover photos (shown on the card and at the top of the post).
   const cover = await saveUploads(formData.getAll("cover"), `post-${stamp}-cover`);
@@ -107,7 +119,7 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     blocks.push({ heading, body, images });
   }
 
-  await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks });
+  await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, paymentMode, feeAmount });
 
   const mod = getModule(category);
   await notifyApprovedMembers(
@@ -165,11 +177,14 @@ async function setDonation(id: number, status: DonationStatus) {
   await setDonationStatus(id, status);
   if (donation?.user_id) {
     const taka = `৳ ${Number(donation.amount).toLocaleString("en-BD")}`;
+    const isTour = donation.kind === "participation";
+    const noun = isTour ? "participation payment" : "contribution";
+    const link = donation.post_id ? `/portal/notice/${donation.post_id}` : "/portal/welfare";
     await notifyUser(
       donation.user_id,
       status === "verified"
-        ? { type: "donation", title: "Donation verified", body: `Your ${taka} contribution has been confirmed. Thank you.`, link: "/portal/welfare" }
-        : { type: "donation", title: "Donation not verified", body: `We couldn't confirm your ${taka} contribution. Please check the reference or contact the office.`, link: "/portal/welfare" },
+        ? { type: "donation", title: isTour ? "Participation confirmed" : "Donation verified", body: `Your ${taka} ${noun} has been confirmed. Thank you.`, link }
+        : { type: "donation", title: isTour ? "Participation not confirmed" : "Donation not verified", body: `We couldn't confirm your ${taka} ${noun}. Please check the reference or contact the office.`, link },
     );
   }
   revalidatePath("/admin/donations");

@@ -8,8 +8,8 @@ const tabs = [
   { href: "/admin", label: "Membership", adminOnly: true },
   { href: "/admin/content", label: "Content", adminOnly: false },
   { href: "/admin/polls", label: "Polls", adminOnly: false },
-  { href: "/admin/donations", label: "Donations", adminOnly: false },
-  { href: "/admin/payments", label: "Payments", adminOnly: true },
+  { href: "/admin/donations", label: "Payments", adminOnly: false },
+  { href: "/admin/payments", label: "Accounts", adminOnly: true },
 ];
 
 export default function AdminNav({ role }: { role: string }) {

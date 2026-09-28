@@ -20,27 +20,31 @@ an administrator verifies and approves them, and only then can they log in.
 **Members' area (`/portal`, login-gated)**
 - Dashboard: fund total, blood-donor count, notices, module grid, latest notices
 - Travel & Tourism — tour notices + next-trip poll (one vote per member)
-- Welfare & Donation — support notices + **manual payment gateway** + donation reporting
+- Welfare — support appeals, each with its own open-amount donation button
 - Blood Directory — volunteer donors, searchable by blood group
 - Condolence & Support — remembrance notices
 - Association Information — committee info + neutral election notices
+- Rich notices — cover image, excerpt, and ordered content sections with per-section photo galleries; each board links to a full notice detail page
 
-**Manual payment gateway (no Stripe / no card processing)**
-- Members see mobile-banking numbers (bKash / Nagad / Rocket) and bank-transfer details
-- Members send money manually, then **report the donation** (amount, method, transaction reference)
-- Admin **verifies** each reported donation; verified total shows on the welfare page and dashboard
-- Admins edit all the account numbers / instructions from the admin Payments tab
+**Per-post payments (no Stripe / no card processing — gateway-ready)**
+- Every notice can carry a payment intent: **participation** (a fixed tour fee) or **donation** (open amount)
+- A tour notice shows a **Participate — ৳fee** button; a welfare appeal shows a **Donate** button (payer chooses the amount, with quick-pick chips)
+- The payment page shows the mobile-banking / bank details, then the member **reports** what they paid (amount, method, transaction reference)
+- Admin **verifies** each contribution; verified totals show per appeal and as the welfare fund (scoped to donations, so tour fees don't inflate it)
+- Amounts and kind are **server-authoritative** — the tour fee is re-read from the post, never trusted from the client
+- **Gateway-ready:** the `donations` table carries `provider` / `gateway_ref` columns; a real gateway (SSLCommerz / bKash PGW) fills them and lands the row verified, no rework
 
 **Admin panel (`/admin`, role-gated, tabbed)**
 - Membership — dashboard counts, pending approvals, roles, block/unblock, delete, CSV export
-- Content — publish / delete notices per board
+- Content — publish / delete notices per board; set each notice's payment mode + fee
 - Polls — create polls (closes the previous), view live results
-- Donations — verify / reject reported donations, running fund totals
-- Payments — edit the mobile-banking & bank-transfer details shown to members
+- Payments — verify / reject reported contributions (tour + welfare), running fund totals
+- Accounts — edit the mobile-banking & bank-transfer details shown on every payment page
 
 **Security**
 - `robots.txt` disallows `/admin` and `/portal`; `noindex` on both
 - All server actions and the CSV route re-check auth server-side
+- Cloudflare Turnstile captcha on registration (verified server-side; dev uses Cloudflare's always-pass test keys)
 
 ## Run it locally
 
@@ -74,10 +78,14 @@ poll, and the four payment methods are created automatically on first run.
 | Members' area | `src/app/portal/` (+ `layout.tsx`, `actions.ts`) |
 | Admin panel | `src/app/admin/` (`page.tsx`, `content/`, `polls/`, `donations/`, `payments/`, `export/`) |
 
-## Not yet built (later, per SRS)
+## Before production
 
-- Photo galleries on the notice boards (uploads wired for avatars; extend to posts)
-- HTTPS/SSL (handled at deploy) · real captcha (swap the math check for Turnstile/hCaptcha)
+Feature work is complete; what's left is deployment hardening:
+
+- **Migrations** — `ensureSchema()` auto-creates/seeds tables on first run as a prototype stand-in; swap for a real migration tool.
+- **Secrets** — rotate `SESSION_SECRET`, change `ADMIN_PASSWORD`, and replace the Turnstile **test** keys with real ones from dash.cloudflare.com.
+- **Email** — set the `SMTP_*` vars (unset = emails logged to console).
+- **HTTPS/SSL** — handled at deploy.
 
 ## Inspect the database
 

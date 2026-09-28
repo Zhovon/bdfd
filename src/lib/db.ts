@@ -88,6 +88,19 @@ export function ensureSchema(): Promise<void> {
 
       // Blog-style posts: a short excerpt for cards + ordered content sections.
       await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS excerpt TEXT`);
+
+      // A post can carry a payment intent:
+      //   none          — informational only (default)
+      //   participation — a fixed fee to join (e.g. a tour); fee_amount is set
+      //   donation      — an open contribution; the payer chooses the amount
+      // payment_open lets an admin close the button (tour filled / deadline passed).
+      await pool.query(
+        `ALTER TABLE posts ADD COLUMN IF NOT EXISTS payment_mode TEXT NOT NULL DEFAULT 'none'`,
+      );
+      await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS fee_amount NUMERIC(12,2)`);
+      await pool.query(
+        `ALTER TABLE posts ADD COLUMN IF NOT EXISTS payment_open BOOLEAN NOT NULL DEFAULT true`,
+      );
       await pool.query(`
         CREATE TABLE IF NOT EXISTS post_blocks (
           id         SERIAL PRIMARY KEY,
@@ -173,6 +186,22 @@ export function ensureSchema(): Promise<void> {
         )
       `);
 
+      // Contributions are now tied to the post they were made against, and carry
+      // a kind: 'donation' (open welfare giving) or 'participation' (a tour fee).
+      await pool.query(
+        `ALTER TABLE donations ADD COLUMN IF NOT EXISTS post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL`,
+      );
+      await pool.query(
+        `ALTER TABLE donations ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'donation'`,
+      );
+      // Gateway-ready: a real payment provider (SSLCommerz/bKash PGW) fills these
+      // and sets status='verified' automatically; unused while payment is manual.
+      await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS provider TEXT`);
+      await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS gateway_ref TEXT`);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS donations_post_idx ON donations(post_id)`,
+      );
+
       await pool.query(`
         CREATE TABLE IF NOT EXISTS notifications (
           id         SERIAL PRIMARY KEY,
@@ -237,14 +266,18 @@ async function seedPaymentMethods(): Promise<void> {
 async function seedContent(): Promise<void> {
   const { rowCount } = await pool.query("SELECT 1 FROM posts LIMIT 1");
   if (!rowCount) {
-    const posts: [string, string, string][] = [
-      ["travel", "Winter tour — Bandarban, 3 days", "A departmental tour to the Bandarban hills is being planned for this winter. Families welcome. Share your interest in the poll and watch this board for the schedule and cost-sharing details."],
-      ["welfare", "Support for a colleague's medical treatment", "A serving officer needs assistance for urgent medical treatment. Contributions to the welfare fund are requested. Payment details are on this page; please report your donation so we can acknowledge it."],
-      ["condolence", "In memory of a retired colleague", "We mourn the passing of a respected retired officer. Our condolences to the family. Details of support for the bereaved family will be posted here."],
-      ["association", "About the association", "This board carries official association information — the committee, general notices, and neutral election information such as the schedule, voter list and final list of candidates. No personal campaigning is hosted here."],
+    // [category, title, body, payment_mode, fee_amount]
+    const posts: [string, string, string, string, number | null][] = [
+      ["travel", "Winter tour — Bandarban, 3 days", "A departmental tour to the Bandarban hills is being planned for this winter. Families welcome. Reserve your seat below; the fee covers transport, lodging and meals.", "participation", 3000],
+      ["welfare", "Support for a colleague's medical treatment", "A serving officer needs assistance for urgent medical treatment. Contributions to the welfare fund are requested — give whatever you can using the button below.", "donation", null],
+      ["condolence", "In memory of a retired colleague", "We mourn the passing of a respected retired officer. Our condolences to the family. Details of support for the bereaved family will be posted here.", "none", null],
+      ["association", "About the association", "This board carries official association information — the committee, general notices, and neutral election information such as the schedule, voter list and final list of candidates. No personal campaigning is hosted here.", "none", null],
     ];
-    for (const [category, title, body] of posts) {
-      await pool.query(`INSERT INTO posts (category, title, body) VALUES ($1,$2,$3)`, [category, title, body]);
+    for (const [category, title, body, mode, fee] of posts) {
+      await pool.query(
+        `INSERT INTO posts (category, title, body, payment_mode, fee_amount) VALUES ($1,$2,$3,$4,$5)`,
+        [category, title, body, mode, fee],
+      );
     }
   }
   const { rowCount: pollCount } = await pool.query("SELECT 1 FROM polls LIMIT 1");

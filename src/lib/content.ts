@@ -3,6 +3,14 @@ import { pool, ensureSchema } from "@/lib/db";
 
 export type PostCategory = "travel" | "welfare" | "condolence" | "association";
 
+/**
+ * A post can carry a payment intent:
+ *  - none          informational only
+ *  - participation a fixed fee to join (tours); feeAmount is set
+ *  - donation      an open contribution; the payer chooses the amount
+ */
+export type PaymentMode = "none" | "participation" | "donation";
+
 type PostRow = {
   id: number;
   category: PostCategory;
@@ -10,11 +18,21 @@ type PostRow = {
   body: string;
   excerpt: string | null;
   image_url: string | null;
+  payment_mode: PaymentMode;
+  fee_amount: string | null; // NUMERIC comes back as string from pg
+  payment_open: boolean;
   created_at: Date;
 };
 
+/** Payment intent flattened for the UI (shared by card + detail views). */
+export type PostPayment = {
+  paymentMode: PaymentMode;
+  feeAmount: number | null;
+  paymentOpen: boolean;
+};
+
 /** A card summary for board lists. */
-export type PostCard = {
+export type PostCard = PostPayment & {
   id: number;
   category: PostCategory;
   title: string;
@@ -27,7 +45,7 @@ export type PostCard = {
 export type PostBlock = { id: number; heading: string | null; body: string; images: string[] };
 
 /** Full post for the detail page. */
-export type Post = {
+export type Post = PostPayment & {
   id: number;
   category: PostCategory;
   title: string;
@@ -39,6 +57,17 @@ export type Post = {
 };
 
 const excerptOf = (r: PostRow) => (r.excerpt?.trim() || r.body || "").slice(0, 200);
+
+/** Flatten a row's payment columns into the UI shape. */
+const paymentOf = (r: PostRow): PostPayment => ({
+  paymentMode: r.payment_mode,
+  feeAmount: r.fee_amount === null ? null : Number(r.fee_amount),
+  paymentOpen: r.payment_open,
+});
+
+/** The post columns every read needs (keeps SELECTs in sync). */
+const POST_COLS =
+  "id, category, title, body, excerpt, image_url, payment_mode, fee_amount, payment_open, created_at";
 
 /** Cover images = post_images with no block_id; falls back to legacy image_url. */
 async function coverImages(postIds: number[]): Promise<Map<number, string[]>> {
@@ -69,6 +98,7 @@ async function toCards(rows: PostRow[]): Promise<PostCard[]> {
       cover: imgs[0] ?? null,
       photoCount: imgs.length,
       created_at: r.created_at,
+      ...paymentOf(r),
     };
   });
 }
@@ -76,8 +106,7 @@ async function toCards(rows: PostRow[]): Promise<PostCard[]> {
 export async function listPosts(category: PostCategory): Promise<PostCard[]> {
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(
-    `SELECT id, category, title, body, excerpt, image_url, created_at
-     FROM posts WHERE category = $1 ORDER BY created_at DESC, id DESC`,
+    `SELECT ${POST_COLS} FROM posts WHERE category = $1 ORDER BY created_at DESC, id DESC`,
     [category],
   );
   return toCards(rows);
@@ -86,8 +115,7 @@ export async function listPosts(category: PostCategory): Promise<PostCard[]> {
 export async function listAllPosts(): Promise<PostCard[]> {
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(
-    `SELECT id, category, title, body, excerpt, image_url, created_at
-     FROM posts ORDER BY created_at DESC, id DESC`,
+    `SELECT ${POST_COLS} FROM posts ORDER BY created_at DESC, id DESC`,
   );
   return toCards(rows);
 }
@@ -96,7 +124,7 @@ export async function listAllPosts(): Promise<PostCard[]> {
 export async function getPost(id: number): Promise<Post | null> {
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(
-    `SELECT id, category, title, body, excerpt, image_url, created_at FROM posts WHERE id = $1`,
+    `SELECT ${POST_COLS} FROM posts WHERE id = $1`,
     [id],
   );
   const p = rows[0];
@@ -129,6 +157,7 @@ export async function getPost(id: number): Promise<Post | null> {
     cover: coverFallback,
     blocks,
     created_at: p.created_at,
+    ...paymentOf(p),
   };
 }
 
@@ -139,14 +168,18 @@ export type NewPost = {
   authorId: number;
   cover: string[];
   blocks: { heading: string; body: string; images: string[] }[];
+  paymentMode: PaymentMode;
+  feeAmount: number | null;
 };
 
 export async function createPost(input: NewPost): Promise<number> {
   await ensureSchema();
+  // A participation post keeps its fee; other modes never carry one.
+  const fee = input.paymentMode === "participation" ? input.feeAmount : null;
   const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO posts (category, title, body, excerpt, author_id, image_url)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-    [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null],
+    `INSERT INTO posts (category, title, body, excerpt, author_id, image_url, payment_mode, fee_amount)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+    [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null, input.paymentMode, fee],
   );
   const postId = rows[0].id;
 

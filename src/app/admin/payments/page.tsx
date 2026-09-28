@@ -8,11 +8,11 @@ export default async function AdminPayments() {
   return (
     <div>
       <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-        Payment methods
+        Receiving accounts
       </h2>
       <p className="mt-2 max-w-2xl text-stone">
-        These are shown to members on the Welfare &amp; Donation page. Update the account numbers and
-        instructions here.
+        The mobile-banking and bank accounts shown to members on every payment page. Update the
+        account numbers and instructions here.
       </p>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">

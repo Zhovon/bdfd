@@ -15,6 +15,11 @@
 
   --background: var(--husk);
   --foreground: var(--field);
+
+  /* Elevation — soft, green-tinted depth for a premium institutional feel */
+  --shadow-card: 0 1px 2px rgba(10, 59, 44, 0.04), 0 6px 20px -12px rgba(10, 59, 44, 0.18);
+  --shadow-card-hover: 0 10px 34px -12px rgba(10, 59, 44, 0.32);
+  --shadow-panel: 0 14px 44px -22px rgba(10, 59, 44, 0.42);
 }
 
 /* Literal values so Tailwind v4 generates the color utilities (bg-field,
@@ -117,4 +122,44 @@ body {
   outline: 2px solid var(--grain);
   outline-offset: 3px;
   border-radius: 2px;
+}
+
+/* Animated inline-link underline — grows from the left on hover */
+.link-underline {
+  background-image: linear-gradient(var(--brand), var(--brand));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1.5px;
+  padding-bottom: 1px;
+  transition: background-size 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.link-underline:hover {
+  background-size: 100% 1.5px;
+}
+
+/* Card lift — pairs with the elevation tokens for a gentle rise on hover */
+.lift {
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.3s ease;
+}
+.lift:hover {
+  transform: translateY(-4px);
+}
+
+/* Institutional hairline — a centred gradient rule that fades at the edges */
+.rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(to right, transparent, var(--line) 12%, var(--line) 88%, transparent);
+}
+
+/* Seal — a fine inner ring that turns a monogram badge into a crest-like mark */
+.seal::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+  border-radius: inherit;
+  opacity: 0.35;
 }

@@ -5,7 +5,7 @@ export default function ModuleHeader({ mod, children }: { mod: Module; children?
   return (
     <header className="border-b border-line pb-6">
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-field font-[family-name:var(--font-display)] text-xs font-bold text-grain">
+        <span className="seal relative grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-field font-[family-name:var(--font-display)] text-xs font-bold text-grain">
           {mod.code}
         </span>
         <span className="log-label text-brand">Members&apos; module</span>

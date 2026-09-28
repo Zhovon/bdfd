@@ -5,9 +5,15 @@ import { addPost, type PostFormState } from "@/app/admin/actions";
 
 const categories = [
   { value: "travel", label: "Travel & Tourism" },
-  { value: "welfare", label: "Welfare & Donation" },
+  { value: "welfare", label: "Welfare" },
   { value: "condolence", label: "Condolence & Support" },
   { value: "association", label: "Association Information" },
+];
+
+const paymentModes = [
+  { value: "none", label: "No payment — informational notice" },
+  { value: "participation", label: "Participation — a fixed fee to join (e.g. a tour)" },
+  { value: "donation", label: "Donation — open amount, payer chooses" },
 ];
 
 const fileInput =
@@ -17,6 +23,7 @@ const textInput =
 
 export default function PostEditor() {
   const [state, formAction, pending] = useActionState<PostFormState, FormData>(addPost, null);
+  const [paymentMode, setPaymentMode] = useState("none");
   // Each section is tracked by a stable key; names use the render index (0..n-1).
   const [sections, setSections] = useState<number[]>([]);
   const nextKey = useRef(1);
@@ -30,6 +37,7 @@ export default function PostEditor() {
     if (state?.ok) {
       formRef.current?.reset();
       setSections([]);
+      setPaymentMode("none");
     }
   }, [state]);
 
@@ -71,6 +79,47 @@ export default function PostEditor() {
         </span>
         <input name="cover" type="file" accept="image/*" multiple className={fileInput} />
       </label>
+
+      {/* Payment intent — adds a Participate / Donate button to the notice */}
+      <fieldset className="rounded-lg border border-line p-4">
+        <legend className="log-label px-2 text-brand">Payment</legend>
+        <label className="block">
+          <span className="log-label text-field">Mode</span>
+          <select
+            name="paymentMode"
+            value={paymentMode}
+            onChange={(e) => setPaymentMode(e.target.value)}
+            className={textInput}
+          >
+            {paymentModes.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {paymentMode === "participation" && (
+          <label className="mt-3 block">
+            <span className="log-label flex items-center gap-2 text-field">
+              Fee per person <span className="text-stone">· BDT</span>
+            </span>
+            <input
+              name="feeAmount"
+              type="number"
+              min={1}
+              step="0.01"
+              required
+              placeholder="3000"
+              className={textInput}
+            />
+          </label>
+        )}
+        {paymentMode === "donation" && (
+          <p className="mt-3 text-sm text-stone">
+            Members will choose their own amount when they contribute.
+          </p>
+        )}
+      </fieldset>
 
       {/* Sections */}
       <div className="grid gap-4">

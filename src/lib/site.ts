@@ -27,8 +27,8 @@ export const modules: Module[] = [
   {
     code: "WLF",
     slug: "welfare",
-    title: "Welfare & Donation",
-    blurb: "Support notices and the welfare fund — bank & mobile-banking details to donate.",
+    title: "Welfare",
+    blurb: "Support notices for colleagues in need — contribute to any appeal directly.",
   },
   {
     code: "BLD",

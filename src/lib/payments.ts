@@ -14,16 +14,24 @@ export type PaymentMethod = {
 
 export type DonationStatus = "reported" | "verified" | "rejected";
 
+/** 'donation' = open welfare giving; 'participation' = a fixed tour fee. */
+export type ContributionKind = "donation" | "participation";
+
 export type Donation = {
   id: number;
   user_id: number | null;
+  post_id: number | null;
+  kind: ContributionKind;
   donor_name: string;
   amount: string; // NUMERIC comes back as string from pg
   method: string;
   transaction_ref: string;
   note: string | null;
   status: DonationStatus;
+  provider: string | null; // set by a real gateway; null while manual
+  gateway_ref: string | null;
   created_at: Date;
+  post_title: string | null; // joined from posts for admin display
 };
 
 export async function listPaymentMethods(activeOnly = true): Promise<PaymentMethod[]> {
@@ -49,28 +57,41 @@ export async function updatePaymentMethod(
 
 export async function createDonation(d: {
   userId: number | null;
+  postId: number | null;
+  kind: ContributionKind;
   donorName: string;
   amount: number;
   method: string;
   transactionRef: string;
   note: string | null;
-}): Promise<void> {
+  provider?: string | null;
+  gatewayRef?: string | null;
+}): Promise<number> {
   await ensureSchema();
-  await pool.query(
-    `INSERT INTO donations (user_id, donor_name, amount, method, transaction_ref, note)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [d.userId, d.donorName, d.amount, d.method, d.transactionRef, d.note],
+  // A gateway-confirmed contribution lands verified; a manual report is 'reported'.
+  const status = d.gatewayRef ? "verified" : "reported";
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO donations
+       (user_id, post_id, kind, donor_name, amount, method, transaction_ref, note, provider, gateway_ref, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+    [
+      d.userId, d.postId, d.kind, d.donorName, d.amount, d.method, d.transactionRef,
+      d.note, d.provider ?? null, d.gatewayRef ?? null, status,
+    ],
   );
+  return rows[0].id;
 }
 
 export async function listDonations(status?: DonationStatus): Promise<Donation[]> {
   await ensureSchema();
+  const base = `SELECT d.*, p.title AS post_title
+                FROM donations d LEFT JOIN posts p ON p.id = d.post_id`;
   const { rows } = status
     ? await pool.query<Donation>(
-        `SELECT * FROM donations WHERE status = $1 ORDER BY created_at DESC, id DESC`,
+        `${base} WHERE d.status = $1 ORDER BY d.created_at DESC, d.id DESC`,
         [status],
       )
-    : await pool.query<Donation>(`SELECT * FROM donations ORDER BY created_at DESC, id DESC`);
+    : await pool.query<Donation>(`${base} ORDER BY d.created_at DESC, d.id DESC`);
   return rows;
 }
 
@@ -85,11 +106,9 @@ export async function setDonationStatus(id: number, status: DonationStatus): Pro
   await pool.query(`UPDATE donations SET status = $2 WHERE id = $1`, [id, status]);
 }
 
-export async function donationTotals(): Promise<{ verified: number; reported: number; count: number }> {
-  await ensureSchema();
-  const { rows } = await pool.query<{ status: DonationStatus; sum: string; n: string }>(
-    `SELECT status, COALESCE(sum(amount),0) AS sum, count(*) AS n FROM donations GROUP BY status`,
-  );
+export type ContributionTotals = { verified: number; reported: number; count: number };
+
+function tally(rows: { status: DonationStatus; sum: string; n: string }[]): ContributionTotals {
   let verified = 0, reported = 0, count = 0;
   for (const r of rows) {
     if (r.status === "verified") verified = Number(r.sum);
@@ -97,4 +116,30 @@ export async function donationTotals(): Promise<{ verified: number; reported: nu
     count += Number(r.n);
   }
   return { verified, reported, count };
+}
+
+/** Totals across all contributions, optionally scoped to one kind. */
+export async function donationTotals(kind?: ContributionKind): Promise<ContributionTotals> {
+  await ensureSchema();
+  const { rows } = kind
+    ? await pool.query<{ status: DonationStatus; sum: string; n: string }>(
+        `SELECT status, COALESCE(sum(amount),0) AS sum, count(*) AS n
+         FROM donations WHERE kind = $1 GROUP BY status`,
+        [kind],
+      )
+    : await pool.query<{ status: DonationStatus; sum: string; n: string }>(
+        `SELECT status, COALESCE(sum(amount),0) AS sum, count(*) AS n FROM donations GROUP BY status`,
+      );
+  return tally(rows);
+}
+
+/** Totals for a single post (the amount raised against that notice). */
+export async function postTotals(postId: number): Promise<ContributionTotals> {
+  await ensureSchema();
+  const { rows } = await pool.query<{ status: DonationStatus; sum: string; n: string }>(
+    `SELECT status, COALESCE(sum(amount),0) AS sum, count(*) AS n
+     FROM donations WHERE post_id = $1 GROUP BY status`,
+    [postId],
+  );
+  return tally(rows);
 }

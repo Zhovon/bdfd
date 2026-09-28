@@ -30,7 +30,7 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex items-center gap-3" aria-label={`${org.name} home`}>
           <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-[3px] bg-field font-[family-name:var(--font-display)] text-sm font-bold text-grain"
+            className="seal relative grid h-10 w-10 shrink-0 place-items-center rounded-[4px] bg-field font-[family-name:var(--font-display)] text-sm font-bold text-grain"
             aria-hidden
           >
             {org.monogram}

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Gallery";
+import PaymentCTA from "@/components/PaymentCTA";
 import { requireUser } from "@/lib/session";
 import { getPost } from "@/lib/content";
+import { postTotals } from "@/lib/payments";
 import { getModule, categoryMeta } from "@/lib/site";
 
 const fmt = (d: Date) =>
@@ -16,12 +18,13 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
 
   const mod = getModule(post.category);
   const meta = categoryMeta(post.category);
+  const totals = post.paymentMode === "none" ? null : await postTotals(post.id);
 
   return (
     <article className="mx-auto max-w-3xl">
       <Link
         href={`/portal/${post.category}`}
-        className="log-label inline-flex items-center gap-1 text-stone transition-colors hover:text-field"
+        className="log-label link-underline inline-flex items-center gap-1 text-stone transition-colors hover:text-field"
       >
         ← {mod?.title ?? "Back"}
       </Link>
@@ -36,18 +39,22 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
         <span className="log-label text-stone">{fmt(post.created_at)}</span>
       </div>
 
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold leading-tight text-field">
+      <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight text-field sm:text-5xl">
         {post.title}
       </h1>
       {post.excerpt && <p className="mt-3 text-lg leading-relaxed text-stone">{post.excerpt}</p>}
 
+      {totals && <PaymentCTA post={post} totals={totals} />}
+
       {post.cover.length > 0 && <Gallery images={post.cover} title={post.title} />}
+
+      <hr className="rule mt-10" />
 
       {/* Sections */}
       {post.blocks.length > 0 ? (
-        <div className="mt-8 grid gap-10">
+        <div className="mt-10 grid gap-10">
           {post.blocks.map((b, i) => (
-            <section key={b.id}>
+            <section key={b.id} className={i > 0 ? "border-t border-line pt-10" : ""}>
               {b.heading && (
                 <h2 className="flex items-baseline gap-3 font-[family-name:var(--font-display)] text-2xl font-bold text-field">
                   <span className="log-label" style={{ color: meta.accent }}>
