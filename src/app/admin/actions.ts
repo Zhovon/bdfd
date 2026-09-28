@@ -94,8 +94,10 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     return { ok: false, message: "Choose a board." };
   if (!title) return { ok: false, message: "Give the notice a title." };
 
-  // Payment intent (defaults to an informational notice).
-  const paymentMode = (str(formData.get("paymentMode")) || "none") as PaymentMode;
+  // Payment intent — only Travel & Tourism posts may carry a payment.
+  const paymentMode = (category === "travel"
+    ? str(formData.get("paymentMode")) || "none"
+    : "none") as PaymentMode;
   if (!["none", "participation", "donation"].includes(paymentMode))
     return { ok: false, message: "Choose a valid payment mode." };
   let feeAmount: number | null = null;
@@ -158,7 +160,9 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
     return { ok: false, message: "Choose a board." };
   if (!title) return { ok: false, message: "Give the notice a title." };
 
-  const paymentMode = (str(formData.get("paymentMode")) || "none") as PaymentMode;
+  const paymentMode = (category === "travel"
+    ? str(formData.get("paymentMode")) || "none"
+    : "none") as PaymentMode;
   if (!["none", "participation", "donation"].includes(paymentMode))
     return { ok: false, message: "Choose a valid payment mode." };
   let feeAmount: number | null = null;

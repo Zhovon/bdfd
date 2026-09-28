@@ -42,6 +42,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
     editing ? editPost : addPost,
     null,
   );
+  const [category, setCategory] = useState(initial?.category ?? "travel");
   const [paymentMode, setPaymentMode] = useState(initial?.paymentMode ?? "none");
   const [sections, setSections] = useState<Section[]>(
     initial?.blocks.map((b, i) => ({ key: i + 1, heading: b.heading, body: b.body })) ?? [],
@@ -59,6 +60,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
       formRef.current?.reset();
       setSections([]);
       setPaymentMode("none");
+      setCategory("travel");
     }
   }, [state, editing]);
 
@@ -69,7 +71,13 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
 
       <label>
         <span className="log-label text-field">Board</span>
-        <select name="category" required defaultValue={initial?.category ?? "travel"} className={textInput}>
+        <select
+          name="category"
+          required
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className={textInput}
+        >
           {categories.map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
@@ -175,7 +183,8 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
         </div>
       )}
 
-      {/* Payment intent — adds a Participate / Donate button to the notice */}
+      {/* Payment intent — only Travel & Tourism posts can carry a payment */}
+      {category === "travel" && (
       <fieldset className="rounded-lg border border-line p-4">
         <legend className="log-label px-2 text-brand">Payment</legend>
         <label className="block">
@@ -216,6 +225,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
           </p>
         )}
       </fieldset>
+      )}
 
       {/* Text sections */}
       <div className="grid gap-4">
