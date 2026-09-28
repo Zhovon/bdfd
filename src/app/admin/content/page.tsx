@@ -12,7 +12,7 @@ export default async function AdminContent() {
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr]">
       {/* Create */}
-      <div>
+      <div className="min-w-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
           New post / notice
         </h2>
@@ -26,7 +26,7 @@ export default async function AdminContent() {
       </div>
 
       {/* List */}
-      <div>
+      <div className="min-w-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
           Posted <span className="text-stone">({posts.length})</span>
         </h2>

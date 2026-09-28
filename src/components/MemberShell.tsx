@@ -15,7 +15,7 @@ export default function MemberShell({ user, unread, children }: Props) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-line bg-husk/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
           <Link href="/portal" className="flex items-center gap-3">

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
   return (
-    <div className="mx-auto max-w-6xl px-5 py-8">
+    <div className="mx-auto w-full min-w-0 max-w-6xl px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="log-label text-brand">Admin panel · {staff.role}</p>
