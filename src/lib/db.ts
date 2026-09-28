@@ -50,6 +50,10 @@ export type UserWithHash = User & { password_hash: string };
 
 let schemaReady: Promise<void> | null = null;
 
+// Bump when the DDL below changes so the next deploy re-runs the migration once.
+// Between changes, cold serverless instances skip the ~20 DDL round-trips.
+const SCHEMA_VERSION = 1;
+
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
  * in for a migration; swap for a real migration tool before production.
@@ -57,6 +61,13 @@ let schemaReady: Promise<void> | null = null;
 export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
     schemaReady = (async () => {
+      // Fast path: a tiny version marker lets a fresh serverless instance skip
+      // the whole migration when the schema is already at the current version —
+      // two cheap queries instead of ~20 DDL round-trips to the database.
+      await pool.query(`CREATE TABLE IF NOT EXISTS schema_meta (version INTEGER NOT NULL)`);
+      const meta = await pool.query<{ version: number }>(`SELECT version FROM schema_meta LIMIT 1`);
+      if ((meta.rows[0]?.version ?? 0) >= SCHEMA_VERSION) return;
+
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id             SERIAL PRIMARY KEY,
@@ -231,6 +242,10 @@ export function ensureSchema(): Promise<void> {
       await ensureAdmin();
       await seedPaymentMethods();
       await seedContent();
+
+      // Record the version so later cold starts take the fast path above.
+      await pool.query(`DELETE FROM schema_meta`);
+      await pool.query(`INSERT INTO schema_meta (version) VALUES ($1)`, [SCHEMA_VERSION]);
     })().catch((err) => {
       schemaReady = null;
       throw err;
