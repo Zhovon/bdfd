@@ -3,10 +3,10 @@
  * name or tagline change — nothing else needs to touch them.
  */
 export const org = {
-  name: "Internal Officers' Welfare & Community Portal",
+  name: "Bangladesh Food Ministry Officers' Tour & Travel Portal",
   short: "Tour & Travel Portal",
-  monogram: "IO", // Internal Officers
-  tagline: "Welfare and community for officers of the service",
+  monogram: "FM", // Food Ministry
+  tagline: "Tour planning, travel and welfare for Bangladesh Food Ministry officers",
 };
 
 export type Module = {
