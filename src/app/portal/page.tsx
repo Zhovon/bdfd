@@ -1,24 +1,17 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/session";
-import { modules, categoryMeta } from "@/lib/site";
 import { listAllPosts } from "@/lib/content";
 import { donationTotals } from "@/lib/payments";
 import { listBloodDonors } from "@/lib/db";
+import PostBoard from "@/components/PostBoard";
 
 const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
-const rel = (d: Date) => {
-  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days}d ago`;
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(d));
-};
 
 export default async function PortalDashboard() {
   const [user, posts, totals, donors] = await Promise.all([
     getSessionUser(),
     listAllPosts(),
-    donationTotals(),
+    donationTotals("donation"), // welfare fund = donations only, not tour fees
     listBloodDonors(),
   ]);
   const firstName = user?.full_name.split(" ")[0] ?? "Officer";
@@ -58,65 +51,16 @@ export default async function PortalDashboard() {
         <Stat label="Notices" value={String(posts.length)} sub="posted" href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
       </div>
 
-      {/* Modules */}
-      <h2 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">Explore</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {modules.map((m) => (
-          <Link
-            key={m.slug}
-            href={`/portal/${m.slug}`}
-            className="group flex items-start gap-4 rounded-xl border border-line p-5 transition-all hover:border-field/40 hover:shadow-[0_6px_24px_-14px_rgba(10,59,44,0.4)]"
-          >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-field font-[family-name:var(--font-display)] text-xs font-bold text-grain">
-              {m.code}
-            </span>
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 font-[family-name:var(--font-display)] text-lg font-bold text-field">
-                {m.title}
-                <span className="text-brand transition-transform group-hover:translate-x-0.5">→</span>
-              </span>
-              <span className="mt-0.5 block text-sm text-stone">{m.blurb}</span>
-            </span>
-          </Link>
-        ))}
+      {/* Latest posts */}
+      <div className="mt-12 flex items-baseline justify-between">
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
+          Latest posts
+        </h2>
+        {posts.length > 0 && <span className="log-label text-stone">{posts.length} total</span>}
       </div>
-
-      {/* Latest notices */}
-      {posts.length > 0 && (
-        <>
-          <div className="mt-12 flex items-baseline justify-between">
-            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
-              Latest notices
-            </h2>
-            <span className="log-label text-stone">{posts.length} total</span>
-          </div>
-          <ul className="mt-4 overflow-hidden rounded-xl border border-line">
-            {posts.slice(0, 6).map((p) => {
-              const meta = categoryMeta(p.category);
-              return (
-                <li key={p.id} className="border-b border-line last:border-0">
-                  <Link
-                    href={`/portal/notice/${p.id}`}
-                    className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-husk-deep"
-                  >
-                    <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: meta.accent }} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-field">{p.title}</span>
-                      <span
-                        className="log-label"
-                        style={{ color: meta.accent }}
-                      >
-                        {meta.label}
-                      </span>
-                    </span>
-                    <span className="log-label shrink-0 text-stone">{rel(p.created_at)}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+      <div className="mt-4">
+        <PostBoard posts={posts.slice(0, 4)} showCategory empty="No posts yet." />
+      </div>
     </div>
   );
 }
