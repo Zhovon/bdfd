@@ -1,4 +1,4 @@
-# Bangladesh Food Ministry Officers' Tour & Travel Portal — Tutorial Source
+# Food Officers' Portal — Tutorial Source
 
 > Source material for a NotebookLM tutorial. It describes what the portal is and
 > the exact steps members and administrators follow. Written to be turned into a
@@ -6,11 +6,11 @@
 
 ## What the portal is
 
-A private, members-only web platform for officers of the Bangladesh Food
-Ministry. It brings colleagues together across postings with tour planning,
-mutual welfare, a blood-donor directory, and official notices. Access is
-restricted to verified departmental officers; a new account works only after an
-administrator approves it.
+A private, members-only online communication platform for food officers and
+employees working at establishments across the country. It brings colleagues
+together across postings with notices, tour planning, mutual welfare, and a
+blood-donor directory. Access is restricted to verified officers and employees;
+a new account works only after an administrator approves it.
 
 The portal is organised into five boards (modules):
 
@@ -122,11 +122,11 @@ active.
 
 The design is deliberately institutional: deep Bangladesh green with national
 red accents, a refined "field-log" typographic style, and a **rice-ear crest**
-as the emblem — a nod to the Food Ministry's remit and to the sheaf on
+as the emblem — a nod to the food service's remit and to the sheaf on
 Bangladesh's national emblem. The result reads as an official, trustworthy
 departmental portal rather than a generic app.
 
 ## One-line summary
 
-A trusted, members-only home where Bangladesh Food Ministry officers plan tours,
+A trusted, members-only home where food officers and employees keep in touch, plan tours,
 support one another, and stay one community across every posting.

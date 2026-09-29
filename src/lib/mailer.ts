@@ -2,7 +2,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import { org } from "@/lib/site";
 
-const from = () => process.env.MAIL_FROM ?? "Officers' Portal <no-reply@portal.gov.bd>";
+const from = () => process.env.MAIL_FROM ?? "Food Officers' Portal <no-reply@portal.gov.bd>";
 
 /**
  * Send an email via SMTP if configured; otherwise log it to the server console.

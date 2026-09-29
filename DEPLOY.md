@@ -1,6 +1,6 @@
 # Deployment runbook — BengalCloud VPS + Coolify
 
-Production stack for the Officers' Welfare Portal:
+Production stack for the Food Officers' Portal:
 
 > **BengalCloud VPS 3** (4 vCPU / 4 GB / 50 GB NVMe, Ubuntu 24.04) + **Coolify** ·
 > **Cloudflare** (domain + DNS) · **Cloudflare R2** (images + DB backups) ·
@@ -113,7 +113,7 @@ SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
 SMTP_USER=resend
 SMTP_PASS=re_YOUR_RESEND_KEY
-MAIL_FROM=Officers' Portal <no-reply@YOURDOMAIN>
+MAIL_FROM=Food Officers' Portal <no-reply@YOURDOMAIN>
 
 # Image storage (any S3-compatible store) — REQUIRED (container disk is wiped each redeploy)
 # Supabase Storage (no card) or Cloudflare R2 — see .env.example for both shapes.

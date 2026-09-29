@@ -3,11 +3,11 @@
  * name or tagline change — nothing else needs to touch them.
  */
 export const org = {
-  name: "Bangladesh Food Ministry Officers' Tour & Travel Portal",
-  short: "Tour & Travel Portal",
-  eyebrow: "Bangladesh · Food Ministry", // mono kicker above the wordmark
-  monogram: "FM", // Food Ministry — legacy text mark, superseded by the crest
-  tagline: "Tour planning, travel and welfare for Bangladesh Food Ministry officers",
+  name: "Food Officers' Portal",
+  short: "Food Officers' Portal",
+  eyebrow: "Officers & staff network", // mono kicker above the wordmark
+  tagline:
+    "An online communication platform for food officers and employees — notices, tours, welfare and a blood directory.",
 };
 
 export type Module = {
