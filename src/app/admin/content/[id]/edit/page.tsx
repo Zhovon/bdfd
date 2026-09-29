@@ -2,13 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import PostEditor from "@/components/PostEditor";
 import { requireStaff } from "@/lib/session";
-import { getPost, getPostImages } from "@/lib/content";
+import { getPostForEdit } from "@/lib/content";
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   await requireStaff();
   const { id } = await params;
   const postId = Number(id);
-  const [post, photos] = await Promise.all([getPost(postId), getPostImages(postId)]);
+  const post = await getPostForEdit(postId);
   if (!post) notFound();
 
   return (
@@ -33,8 +33,8 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
             paymentMode: post.paymentMode,
             feeAmount: post.feeAmount,
             pdfUrl: post.pdfUrl,
-            photos,
-            blocks: post.blocks.map((b) => ({ heading: b.heading ?? "", body: b.body })),
+            cover: post.cover,
+            blocks: post.blocks,
           }}
         />
       </div>

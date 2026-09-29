@@ -193,12 +193,17 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
   }
 
   const blockCount = Number(str(formData.get("blockCount"))) || 0;
-  const blocks: { heading: string; body: string }[] = [];
+  const blocks: { id: number | null; heading: string; body: string; newImages: string[] }[] = [];
   for (let i = 0; i < blockCount; i++) {
+    const rawId = Number(str(formData.get(`block-id-${i}`)));
+    const blockId = Number.isInteger(rawId) && rawId > 0 ? rawId : null;
     const heading = str(formData.get(`block-heading-${i}`));
     const body = str(formData.get(`block-body-${i}`));
-    if (!heading && !body) continue;
-    blocks.push({ heading, body });
+    const newImages = await saveUploads(formData.getAll(`block-images-${i}`), `post-${id}-${stamp}-b${i}`);
+    // Drop only brand-new sections left completely empty; keep existing ones so
+    // the user can clear text yet retain the section's photos.
+    if (blockId === null && !heading && !body && newImages.length === 0) continue;
+    blocks.push({ id: blockId, heading, body, newImages });
   }
 
   await updatePost(id, {

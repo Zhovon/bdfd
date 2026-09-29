@@ -247,23 +247,66 @@ export async function deletePost(id: number): Promise<void> {
   await pool.query(`DELETE FROM posts WHERE id = $1`, [id]);
 }
 
-/** All of a post's images with their ids (for the edit UI). */
-export async function getPostImages(id: number): Promise<{ id: number; url: string }[]> {
+export type ImageRef = { id: number; url: string };
+
+export type PostEditData = PostPayment & {
+  id: number;
+  category: PostCategory;
+  title: string;
+  excerpt: string;
+  videos: string[];
+  pdfUrl: string | null;
+  cover: ImageRef[];
+  blocks: { id: number; heading: string; body: string; images: ImageRef[] }[];
+};
+
+/** A post shaped for the editor: cover + per-section images carry their ids. */
+export async function getPostForEdit(id: number): Promise<PostEditData | null> {
   await ensureSchema();
-  const { rows } = await pool.query<{ id: number; url: string }>(
-    `SELECT id, url FROM post_images WHERE post_id = $1 ORDER BY sort_order, id`,
+  const { rows } = await pool.query<PostRow>(`SELECT ${POST_COLS} FROM posts WHERE id = $1`, [id]);
+  const p = rows[0];
+  if (!p) return null;
+
+  const { rows: imgs } = await pool.query<{ id: number; url: string; block_id: number | null }>(
+    `SELECT id, url, block_id FROM post_images WHERE post_id = $1 ORDER BY sort_order, id`,
     [id],
   );
-  return rows;
+  const { rows: blockRows } = await pool.query<{ id: number; heading: string | null; body: string }>(
+    `SELECT id, heading, body FROM post_blocks WHERE post_id = $1 ORDER BY sort_order, id`,
+    [id],
+  );
+  const { rows: vids } = await pool.query<{ url: string }>(
+    `SELECT url FROM post_videos WHERE post_id = $1 ORDER BY sort_order, id`,
+    [id],
+  );
+
+  return {
+    id: p.id,
+    category: p.category,
+    title: p.title,
+    excerpt: p.excerpt ?? "", // raw excerpt for editing (not the computed one)
+    videos: vids.map((v) => v.url),
+    pdfUrl: p.pdf_url,
+    ...paymentOf(p),
+    cover: imgs.filter((i) => i.block_id === null).map((i) => ({ id: i.id, url: i.url })),
+    blocks: blockRows.map((b) => ({
+      id: b.id,
+      heading: b.heading ?? "",
+      body: b.body,
+      images: imgs.filter((i) => i.block_id === b.id).map((i) => ({ id: i.id, url: i.url })),
+    })),
+  };
 }
 
 export type EditPost = {
   category: PostCategory;
   title: string;
   excerpt: string;
-  newCover: string[]; // newly uploaded photos to append
-  removeImageIds: number[]; // existing image ids to delete
-  blocks: { heading: string; body: string }[];
+  newCover: string[]; // newly uploaded cover photos to append
+  removeImageIds: number[]; // existing image ids to delete (cover or section)
+  // Sections in display order. A block with an id already exists (update it in
+  // place so its images survive); a null id is a brand-new section to insert.
+  blocks: { id: number | null; heading: string; body: string; newImages: string[] }[];
   videos: string[];
   newPdfUrl: string | null; // replacement PDF, if uploaded
   removePdf: boolean;
@@ -271,15 +314,30 @@ export type EditPost = {
   feeAmount: number | null;
 };
 
+/** Append image urls to a group (cover = null block, or a section) after its
+ * current highest sort_order, so new uploads land after existing ones. */
+async function appendImages(postId: number, blockId: number | null, urls: string[]): Promise<void> {
+  if (urls.length === 0) return;
+  const { rows } = await pool.query<{ max: number | null }>(
+    blockId === null
+      ? `SELECT MAX(sort_order) AS max FROM post_images WHERE post_id = $1 AND block_id IS NULL`
+      : `SELECT MAX(sort_order) AS max FROM post_images WHERE block_id = $2`,
+    blockId === null ? [postId] : [postId, blockId],
+  );
+  let order = (rows[0]?.max ?? -1) + 1;
+  for (const url of urls) {
+    await pool.query(
+      `INSERT INTO post_images (post_id, url, sort_order, block_id) VALUES ($1,$2,$3,$4)`,
+      [postId, url, order++, blockId],
+    );
+  }
+}
+
 export async function updatePost(id: number, input: EditPost): Promise<void> {
   await ensureSchema();
   const fee = input.paymentMode === "participation" ? input.feeAmount : null;
 
-  // Flatten any section-tied images into the post-level gallery so recreating
-  // the text blocks below won't cascade-delete them.
-  await pool.query(`UPDATE post_images SET block_id = NULL WHERE post_id = $1`, [id]);
-
-  // Remove images the editor marked for deletion.
+  // Remove images (cover or section) the editor ticked for deletion.
   if (input.removeImageIds.length > 0) {
     await pool.query(`DELETE FROM post_images WHERE post_id = $1 AND id = ANY($2::int[])`, [
       id,
@@ -287,18 +345,40 @@ export async function updatePost(id: number, input: EditPost): Promise<void> {
     ]);
   }
 
-  // Append newly uploaded photos after the existing ones.
-  const { rows: maxRow } = await pool.query<{ max: number | null }>(
-    `SELECT MAX(sort_order) AS max FROM post_images WHERE post_id = $1`,
-    [id],
-  );
-  let order = (maxRow[0]?.max ?? -1) + 1;
-  for (const url of input.newCover) {
-    await pool.query(
-      `INSERT INTO post_images (post_id, url, sort_order, block_id) VALUES ($1,$2,$3,NULL)`,
-      [id, url, order++],
-    );
+  // Drop sections the editor removed; their images cascade away with them.
+  // Everything still present keeps its id (and thus its images) through the edit.
+  const keepIds = input.blocks.map((b) => b.id).filter((x): x is number => x !== null);
+  if (keepIds.length > 0) {
+    await pool.query(`DELETE FROM post_blocks WHERE post_id = $1 AND id <> ALL($2::int[])`, [
+      id,
+      keepIds,
+    ]);
+  } else {
+    await pool.query(`DELETE FROM post_blocks WHERE post_id = $1`, [id]);
   }
+
+  // Upsert each surviving/new section in display order, then append its uploads.
+  for (let i = 0; i < input.blocks.length; i++) {
+    const b = input.blocks[i];
+    let blockId: number;
+    if (b.id !== null) {
+      await pool.query(
+        `UPDATE post_blocks SET heading=$2, body=$3, sort_order=$4 WHERE id=$1 AND post_id=$5`,
+        [b.id, b.heading || null, b.body, i, id],
+      );
+      blockId = b.id;
+    } else {
+      const { rows: br } = await pool.query<{ id: number }>(
+        `INSERT INTO post_blocks (post_id, heading, body, sort_order) VALUES ($1,$2,$3,$4) RETURNING id`,
+        [id, b.heading || null, b.body, i],
+      );
+      blockId = br[0].id;
+    }
+    await appendImages(id, blockId, b.newImages);
+  }
+
+  // Append newly uploaded cover photos after the existing ones.
+  await appendImages(id, null, input.newCover);
 
   // PDF: replace if a new one was uploaded, else clear if removed, else keep.
   if (input.newPdfUrl) {
@@ -307,25 +387,15 @@ export async function updatePost(id: number, input: EditPost): Promise<void> {
     await pool.query(`UPDATE posts SET pdf_url = NULL WHERE id = $1`, [id]);
   }
 
-  // Core fields + the card thumbnail (first remaining image).
+  // Core fields + the card thumbnail (first remaining cover image).
   const { rows: firstImg } = await pool.query<{ url: string }>(
-    `SELECT url FROM post_images WHERE post_id = $1 ORDER BY sort_order, id LIMIT 1`,
+    `SELECT url FROM post_images WHERE post_id = $1 AND block_id IS NULL ORDER BY sort_order, id LIMIT 1`,
     [id],
   );
   await pool.query(
     `UPDATE posts SET category=$2, title=$3, excerpt=$4, image_url=$5, payment_mode=$6, fee_amount=$7 WHERE id=$1`,
     [id, input.category, input.title, input.excerpt, firstImg[0]?.url ?? null, input.paymentMode, fee],
   );
-
-  // Replace text blocks.
-  await pool.query(`DELETE FROM post_blocks WHERE post_id = $1`, [id]);
-  for (let i = 0; i < input.blocks.length; i++) {
-    const b = input.blocks[i];
-    await pool.query(
-      `INSERT INTO post_blocks (post_id, heading, body, sort_order) VALUES ($1,$2,$3,$4)`,
-      [id, b.heading || null, b.body, i],
-    );
-  }
 
   // Replace video links.
   await pool.query(`DELETE FROM post_videos WHERE post_id = $1`, [id]);

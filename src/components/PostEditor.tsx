@@ -21,6 +21,8 @@ const fileInput =
 const textInput =
   "mt-2 w-full rounded-lg border border-line bg-husk px-3 py-2.5 text-field outline-none focus:border-brand";
 
+type Photo = { id: number; url: string };
+
 export type EditInitial = {
   id: number;
   category: string;
@@ -30,11 +32,12 @@ export type EditInitial = {
   paymentMode: string;
   feeAmount: number | null;
   pdfUrl: string | null;
-  photos: { id: number; url: string }[];
-  blocks: { heading: string; body: string }[];
+  cover: Photo[];
+  blocks: { id: number; heading: string; body: string; images: Photo[] }[];
 };
 
-type Section = { key: number; heading: string; body: string };
+// key = React list key; id = existing block id (null for a section not yet saved).
+type Section = { key: number; id: number | null; heading: string; body: string; images: Photo[] };
 
 export default function PostEditor({ initial }: { initial?: EditInitial }) {
   const editing = Boolean(initial);
@@ -45,13 +48,19 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
   const [category, setCategory] = useState(initial?.category ?? "travel");
   const [paymentMode, setPaymentMode] = useState(initial?.paymentMode ?? "none");
   const [sections, setSections] = useState<Section[]>(
-    initial?.blocks.map((b, i) => ({ key: i + 1, heading: b.heading, body: b.body })) ?? [],
+    initial?.blocks.map((b, i) => ({
+      key: i + 1,
+      id: b.id,
+      heading: b.heading,
+      body: b.body,
+      images: b.images,
+    })) ?? [],
   );
   const nextKey = useRef((initial?.blocks.length ?? 0) + 1);
   const formRef = useRef<HTMLFormElement>(null);
 
   const addSection = () =>
-    setSections((s) => [...s, { key: nextKey.current++, heading: "", body: "" }]);
+    setSections((s) => [...s, { key: nextKey.current++, id: null, heading: "", body: "", images: [] }]);
   const removeSection = (key: number) => setSections((s) => s.filter((x) => x.key !== key));
 
   // Reset a fresh post after a successful publish (but keep an edited one).
@@ -110,34 +119,19 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
         />
       </label>
 
-      {/* Existing photos (edit) — tick to remove */}
-      {editing && initial!.photos.length > 0 && (
+      {/* Existing cover photos (edit) — tick to remove */}
+      {editing && initial!.cover.length > 0 && (
         <div>
           <span className="log-label flex items-center gap-2 text-field">
-            Current photos <span className="text-stone">· tick to remove</span>
+            Current cover photos <span className="text-stone">· tick to remove</span>
           </span>
-          <div className="mt-2 flex flex-wrap gap-3">
-            {initial!.photos.map((img) => (
-              <label key={img.id} className="relative block cursor-pointer">
-                <input type="checkbox" name="removeImage" value={img.id} className="peer sr-only" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.url}
-                  alt=""
-                  className="h-20 w-28 rounded-md border border-line object-cover peer-checked:opacity-30"
-                />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-md bg-grain/90 py-0.5 text-center text-[0.6rem] font-bold text-husk opacity-0 peer-checked:opacity-100">
-                  REMOVE
-                </span>
-              </label>
-            ))}
-          </div>
+          <PhotoGrid photos={initial!.cover} />
         </div>
       )}
 
       <label>
         <span className="log-label flex items-center gap-2 text-field">
-          {editing ? "Add photos" : "Photos"}{" "}
+          {editing ? "Add cover photos" : "Cover photos"}{" "}
           <span className="text-stone">· optional · first one is the main image</span>
         </span>
         <input name="cover" type="file" accept="image/*" multiple className={fileInput} />
@@ -232,6 +226,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
         {sections.map((s, i) => (
           <fieldset key={s.key} className="rounded-lg border border-line p-4">
             <legend className="log-label px-2 text-brand">Section {i + 1}</legend>
+            {s.id !== null && <input type="hidden" name={`block-id-${i}`} value={s.id} />}
             <label className="block">
               <span className="log-label text-field">Heading</span>
               <input
@@ -249,6 +244,20 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
                 rows={4}
                 className={textInput}
               />
+            </label>
+            {s.images.length > 0 && (
+              <div className="mt-3">
+                <span className="log-label flex items-center gap-2 text-field">
+                  Section photos <span className="text-stone">· tick to remove</span>
+                </span>
+                <PhotoGrid photos={s.images} />
+              </div>
+            )}
+            <label className="mt-3 block">
+              <span className="log-label flex items-center gap-2 text-field">
+                Add section photos <span className="text-stone">· optional · shown with this section</span>
+              </span>
+              <input name={`block-images-${i}`} type="file" accept="image/*" multiple className={fileInput} />
             </label>
             <button
               type="button"
@@ -282,5 +291,27 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
         )}
       </div>
     </form>
+  );
+}
+
+/** Existing photos, each with a tick-to-remove overlay (posts by image id). */
+function PhotoGrid({ photos }: { photos: Photo[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-3">
+      {photos.map((img) => (
+        <label key={img.id} className="relative block cursor-pointer">
+          <input type="checkbox" name="removeImage" value={img.id} className="peer sr-only" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={img.url}
+            alt=""
+            className="h-20 w-28 rounded-md border border-line object-cover peer-checked:opacity-30"
+          />
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-md bg-grain/90 py-0.5 text-center text-[0.6rem] font-bold text-husk opacity-0 peer-checked:opacity-100">
+            REMOVE
+          </span>
+        </label>
+      ))}
+    </div>
   );
 }

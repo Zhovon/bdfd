@@ -20,11 +20,11 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
   const meta = categoryMeta(post.category);
   const totals = post.paymentMode === "none" ? null : await postTotals(post.id);
 
-  // Every photo on the post — cover plus any uploaded to sections — gathered
-  // into one gallery shown between the title and the body text.
-  const photos = [...post.cover, ...post.blocks.flatMap((b) => b.images)];
-  // Sections that carry text (their images moved into the gallery above).
-  const textBlocks = post.blocks.filter((b) => b.heading || b.body);
+  // The cover gallery (plus any videos) sits between the title and the body;
+  // section-specific photos render inline with their own section below.
+  const photos = post.cover;
+  // Sections that carry text or their own photos.
+  const textBlocks = post.blocks.filter((b) => b.heading || b.body || b.images.length > 0);
 
   return (
     <article className="mx-auto max-w-3xl">
@@ -72,6 +72,26 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
               )}
               {b.body && (
                 <p className="mt-3 whitespace-pre-line leading-relaxed text-field/85">{b.body}</p>
+              )}
+              {b.images.length > 0 && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {b.images.map((src) => (
+                    <a
+                      key={src}
+                      href={src}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block overflow-hidden rounded-xl border border-line"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt=""
+                        className="aspect-[4/3] w-full object-cover transition-transform hover:scale-[1.02]"
+                      />
+                    </a>
+                  ))}
+                </div>
               )}
             </section>
           ))}
