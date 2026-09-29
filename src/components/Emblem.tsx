@@ -1,6 +1,6 @@
 /**
- * The house emblem — a single upright rice ear (paddy), echoing both the Food
- * Ministry's remit and the sheaf on Bangladesh's national emblem. Drawn in
+ * The house emblem — a single upright rice ear (paddy), echoing both the food
+ * service's remit and the sheaf on Bangladesh's national emblem. Drawn in
  * `currentColor` so it inherits its surroundings (cream on the green seal,
  * green on light panels). Frame it with the `.seal` ring for a crest.
  */

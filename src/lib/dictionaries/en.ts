@@ -5,10 +5,11 @@
  */
 export const en = {
   brand: {
-    name: "Bangladesh Food Ministry Officers' Tour & Travel Portal",
-    short: "Tour & Travel Portal",
-    eyebrow: "Bangladesh · Food Ministry",
-    tagline: "Tour planning, travel and welfare for Bangladesh Food Ministry officers",
+    name: "Food Officers' Portal",
+    short: "Food Officers' Portal",
+    eyebrow: "Officers & staff network",
+    tagline:
+      "An online communication platform for food officers and employees — notices, tours, welfare and a blood directory.",
     membersArea: "Members' area",
   },
   /** Intl locale for dates and numbers. */
@@ -47,7 +48,7 @@ export const en = {
   },
   footer: {
     membersArea: "Members' area",
-    officersOnly: "Departmental officers only",
+    officersOnly: "Food officers and employees only",
     prototype: "prototype",
   },
   home: {
@@ -154,7 +155,7 @@ export const en = {
     haveAccount: "Already have an account?",
     resetSent: "Your password has been reset — please log in.",
     members: "Members",
-    loginSubtitle: "For approved departmental officers only.",
+    loginSubtitle: "For approved officers and employees only.",
     checking: "Checking…",
     forgotShort: "Forgot?",
     notRegistered: "Not registered yet?",

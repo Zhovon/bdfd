@@ -41,7 +41,7 @@ export default function Brand({
   return (
     <Link
       href={href}
-      aria-label={`${t.brand.name} — home`}
+      aria-label={t.brand.name}
       className={`group inline-flex items-center gap-3 ${className}`}
     >
       <span
@@ -51,7 +51,8 @@ export default function Brand({
         <Emblem className={mark} />
       </span>
       <span className="min-w-0 leading-tight">
-        <span className={`log-label block text-[0.58rem] ${eyebrowColor}`}>{kicker}</span>
+        {/* The eyebrow is dropped on phones, where it would wrap and crowd the header. */}
+        <span className={`log-label hidden text-[0.58rem] sm:block ${eyebrowColor}`}>{kicker}</span>
         <span
           className={`block font-[family-name:var(--font-display)] font-bold tracking-tight ${titleSize} ${titleColor}`}
         >

@@ -1,6 +1,6 @@
-# Internal Officers' Welfare & Community Portal — prototype
+# Food Officers' Portal — prototype
 
-A closed-membership welfare & community portal for departmental officers. The
+A closed-membership online communication platform for food officers and employees. The
 public landing is open; the core is members-only (login-gated). Officers register,
 an administrator verifies and approves them, and only then can they log in.
 
