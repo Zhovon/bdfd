@@ -45,3 +45,7 @@ next-env.d.ts
 # Runtime user uploads (local disk)
 /public/uploads/
 /storage/
+
+# Test output
+/test-results/
+/playwright-report/

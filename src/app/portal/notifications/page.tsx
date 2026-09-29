@@ -3,16 +3,18 @@ import { requireUser } from "@/lib/session";
 import { listNotifications, type Notification } from "@/lib/notifications";
 import MarkNotificationsRead from "@/components/MarkNotificationsRead";
 import { getDict, type Dict } from "@/lib/i18n";
+import { parseNotification, renderNotification } from "@/lib/messages";
 
 const rel = (d: Date, t: Dict["notifications"], locale: string) => {
   const diff = Date.now() - new Date(d).getTime();
   const min = Math.round(diff / 60000);
   if (min < 1) return t.justNow;
-  if (min < 60) return `${min}${t.minutesAgo}`;
+  const num = new Intl.NumberFormat(locale).format; // Bangla digits in Bangla
+  if (min < 60) return `${num(min)}${t.minutesAgo}`;
   const h = Math.round(min / 60);
-  if (h < 24) return `${h}${t.hoursAgo}`;
+  if (h < 24) return `${num(h)}${t.hoursAgo}`;
   const days = Math.round(h / 24);
-  if (days < 7) return `${days}${t.daysAgo}`;
+  if (days < 7) return `${num(days)}${t.daysAgo}`;
   return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short" }).format(new Date(d));
 };
 
@@ -43,6 +45,10 @@ export default async function NotificationsPage() {
       ) : (
         <ul className="mt-8 grid gap-2">
           {items.map((n) => {
+            // Structured notifications render in the reader's language; older
+            // rows fall back to the text saved with them.
+            const msg = parseNotification(n.kind, n.params);
+            const { title, body } = msg ? renderNotification(msg, dict) : { title: n.title, body: n.body };
             const inner = (
               <div
                 className={`flex gap-3 rounded-lg border p-4 transition-colors ${
@@ -52,10 +58,10 @@ export default async function NotificationsPage() {
                 <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-line" : dot[n.type]}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className={`font-semibold ${n.read ? "text-field/80" : "text-field"}`}>{n.title}</p>
+                    <p className={`font-semibold ${n.read ? "text-field/80" : "text-field"}`}>{title}</p>
                     <span className="log-label shrink-0 text-stone">{rel(n.created_at, t, dict.intl)}</span>
                   </div>
-                  {n.body && <p className="mt-0.5 text-sm text-stone">{n.body}</p>}
+                  {body && <p className="mt-0.5 text-sm text-stone">{body}</p>}
                 </div>
               </div>
             );

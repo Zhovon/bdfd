@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { acceptsPayment, type PostCard } from "@/lib/content";
 import { categoryMeta } from "@/lib/site";
+import { photoSrcSet } from "@/lib/media";
 import { getDict, type Dict } from "@/lib/i18n";
 
 const fmtDay = (d: Date, locale: string) => new Intl.DateTimeFormat(locale, { day: "2-digit" }).format(new Date(d));
@@ -60,6 +61,9 @@ export default async function PostBoard({
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={p.cover}
+                  srcSet={photoSrcSet(p.cover)}
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  loading="lazy"
                   alt=""
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                 />

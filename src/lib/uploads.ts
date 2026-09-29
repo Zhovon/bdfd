@@ -3,8 +3,12 @@ import { randomBytes } from "crypto";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { processImage } from "@/lib/images";
+import { thumbUrl } from "@/lib/media";
 
-const MAX_BYTES = 4 * 1024 * 1024; // 4 MB per image
+// Photos are normally shrunk in the browser before upload; this is the ceiling
+// for when that step is skipped. Every image is re-encoded smaller on arrival.
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB per image
 const PDF_MAX_BYTES = 15 * 1024 * 1024; // 15 MB per PDF
 
 export const CONTENT_TYPE: Record<string, string> = {
@@ -93,8 +97,10 @@ async function store(buffer: Buffer, filename: string, contentType: string): Pro
     );
     return `${S3_PUBLIC_URL}/${key}`;
   }
-  await mkdir(LOCAL_UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(LOCAL_UPLOAD_DIR, filename), buffer);
+  // Runtime user data, not source: tell the build's file tracer not to follow it
+  // (otherwise it copies the whole project into the server bundle).
+  await mkdir(/*turbopackIgnore: true*/ LOCAL_UPLOAD_DIR, { recursive: true });
+  await writeFile(path.join(/*turbopackIgnore: true*/ LOCAL_UPLOAD_DIR, filename), buffer);
   return `/uploads/${filename}`;
 }
 
@@ -102,12 +108,15 @@ async function store(buffer: Buffer, filename: string, contentType: string): Pro
 const nonce = () => randomBytes(6).toString("hex");
 
 /**
- * Save an uploaded image and return its public URL. Returns null when no file
- * was provided; throws on an oversized/invalid file.
+ * Save an uploaded image and return its public URL. The photo is re-encoded
+ * (rotated upright, resized, metadata stripped) and stored with a thumbnail;
+ * see lib/media.ts for the naming. Returns null when no file was provided;
+ * throws an UploadError on an oversized or invalid file.
  */
 export async function saveUpload(
   file: FormDataEntryValue | null,
   basename: string,
+  options: { avatar?: boolean } = {},
 ): Promise<string | null> {
   if (!(file instanceof File) || file.size === 0) return null;
   if (file.size > MAX_BYTES) throw new UploadError("imageTooBig");
@@ -115,7 +124,20 @@ export async function saveUpload(
   const buffer = Buffer.from(await file.arrayBuffer());
   const type = sniff(buffer);
   if (!type || type === "pdf") throw new UploadError("imageType");
-  return store(buffer, `${basename}-${nonce()}.${type}`, CONTENT_TYPE[type]);
+
+  let processed;
+  try {
+    processed = await processImage(buffer, options);
+  } catch {
+    // Right magic bytes but undecodable (truncated/corrupt, or over the pixel cap).
+    throw new UploadError("imageType");
+  }
+  const name = `${basename}-${nonce()}`;
+  const [full] = await Promise.all([
+    store(processed.full, `${name}.f.webp`, CONTENT_TYPE.webp),
+    store(processed.thumb, `${name}.t.webp`, CONTENT_TYPE.webp),
+  ]);
+  return full;
 }
 
 /**
@@ -165,7 +187,9 @@ export async function savePdf(
  * link — is ignored. Never throws: a leftover file is logged, not fatal.
  */
 export async function deleteUploads(urls: (string | null | undefined)[]): Promise<void> {
-  for (const url of new Set(urls.filter((u): u is string => Boolean(u)))) {
+  // A photo's thumbnail goes with it.
+  const all = urls.filter((u): u is string => Boolean(u)).flatMap((u) => [u, thumbUrl(u)]);
+  for (const url of new Set(all)) {
     try {
       if (S3_PUBLIC_URL && url.startsWith(`${S3_PUBLIC_URL}/uploads/`) && s3Configured) {
         const key = url.slice(S3_PUBLIC_URL.length + 1);
@@ -174,7 +198,7 @@ export async function deleteUploads(urls: (string | null | undefined)[]): Promis
         const name = url.slice("/uploads/".length);
         if (!SAFE_NAME.test(name)) continue;
         for (const dir of [LOCAL_UPLOAD_DIR, LEGACY_UPLOAD_DIR]) {
-          await unlink(path.join(dir, name)).catch(() => {});
+          await unlink(path.join(/*turbopackIgnore: true*/ dir, name)).catch(() => {});
         }
       }
     } catch (err) {
@@ -191,7 +215,7 @@ export async function readLocalUpload(name: string): Promise<{ body: Buffer; typ
   if (!type) return null;
   for (const dir of [LOCAL_UPLOAD_DIR, LEGACY_UPLOAD_DIR]) {
     try {
-      return { body: await readFile(path.join(dir, name)), type };
+      return { body: await readFile(path.join(/*turbopackIgnore: true*/ dir, name)), type };
     } catch {
       // Not in this directory — try the next one.
     }

@@ -5,12 +5,13 @@ import { listBloodDonors } from "@/lib/db";
 import { categoryMeta } from "@/lib/site";
 import { getDict, type Dict } from "@/lib/i18n";
 import PostBoard from "@/components/PostBoard";
+import { thumbUrl } from "@/lib/media";
 
 const rel = (d: Date, t: Dict) => {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
   if (days <= 0) return t.dashboard.today;
   if (days === 1) return t.dashboard.yesterday;
-  if (days < 7) return `${days} ${t.dashboard.daysAgo}`;
+  if (days < 7) return `${new Intl.NumberFormat(t.intl).format(days)} ${t.dashboard.daysAgo}`;
   return new Intl.DateTimeFormat(t.intl, { day: "2-digit", month: "short" }).format(new Date(d));
 };
 
@@ -43,7 +44,7 @@ export default async function PortalDashboard() {
         <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-field text-lg font-bold text-husk">
           {user?.avatar_url ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+            <img src={thumbUrl(user.avatar_url)} alt="" className="h-full w-full object-cover" />
           ) : (
             initials
           )}

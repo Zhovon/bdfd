@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { createUser, EmailTakenError, getUserByEmail, getUserById, setPassword } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setSession, clearSession, makeResetToken, verifyResetToken } from "@/lib/session";
-import { sendMail, resetEmail } from "@/lib/mailer";
+import { sendMail } from "@/lib/mailer";
+import { buildEmail } from "@/lib/messages";
 import { verifyCaptcha } from "@/lib/captcha";
 import { hit, clearHits, clientIp } from "@/lib/ratelimit";
 import { getDict } from "@/lib/i18n";
@@ -140,7 +141,7 @@ export async function requestPasswordReset(_prev: ForgotState, formData: FormDat
   if (user && user.status === "approved") {
     const base = process.env.APP_URL ?? "http://localhost:3000";
     const url = `${base}/reset?token=${makeResetToken(user.id, user.session_version)}`;
-    const { subject, text } = resetEmail(user.full_name, url);
+    const { subject, text } = buildEmail({ kind: "reset", name: user.full_name, url });
     await sendMail(user.official_email, subject, text);
   }
 

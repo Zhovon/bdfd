@@ -1,4 +1,4 @@
-# Food Officers' Portal — prototype
+# We the Food Family — prototype
 
 A closed-membership online communication platform for food officers and employees. The
 public landing is open; the core is members-only (login-gated). Officers register,
@@ -60,6 +60,26 @@ npm run dev            # 3. app
 
 Open http://localhost:3000 — all tables, the bootstrap admin, seed notices, a seed
 poll, and the four payment methods are created automatically on first run.
+
+## Tests
+
+Requires **Node 22** (see `.nvmrc`).
+
+```bash
+npm run lint && npm run typecheck   # static checks
+npm test                            # unit tests (Vitest) — no database needed
+npm run build && npm run test:e2e   # end-to-end (Playwright) against a real Postgres
+```
+
+The end-to-end suite starts the production build and **wipes its database on every run**, so
+it needs its own: set `E2E_DATABASE_URL` to a disposable database whose name contains `test`
+or `e2e` (it refuses anything else), e.g.
+`createdb -h localhost -p 5433 -U annapurna annapurna_e2e` and
+`E2E_DATABASE_URL=postgresql://annapurna:annapurna_dev@localhost:5433/annapurna_e2e`.
+Run `npx playwright install chromium` once first.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs all of this on every push to `main` and every
+pull request, with a Postgres service for the end-to-end job.
 
 ## Accounts & config (`.env`)
 

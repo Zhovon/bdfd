@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
-/* ---- Internal Officers' Welfare & Community Portal — design tokens ---- */
+/* ---- We the Food Family — design tokens ---- */
+:root {
+  /* Font stacks: the Latin face first, then the Bangla face for Bengali glyphs
+     (the "-latin" variables and --font-bangla come from next/font in layout.tsx). */
+  --font-display: var(--font-display-latin), var(--font-bangla), sans-serif;
+  --font-body: var(--font-body-latin), var(--font-bangla), sans-serif;
+  --font-mono: var(--font-mono-latin), var(--font-bangla), monospace;
+}
+
 :root {
   --husk: #ffffff; /* white surface */
   --husk-deep: #f1f5f3; /* light grey section */
@@ -78,6 +86,16 @@ body {
   letter-spacing: 0.18em;
   font-size: 0.72rem;
   color: var(--stone);
+}
+
+/* Bangla has no capitals, wide tracking pulls its joined letters (conjuncts)
+   apart, and the monospace face's wide spaces gap the words. In Bangla the label
+   keeps its size and colour but reads as normal text. */
+:lang(bn) .log-label {
+  font-family: var(--font-body);
+  letter-spacing: 0.01em;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 /* Paper grain: faint speckle so the husk never reads as flat cream */

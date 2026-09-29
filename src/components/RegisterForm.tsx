@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { submitKeepingInput } from "@/lib/forms";
 import { registerUser, type RegisterState } from "@/app/actions";
 import Turnstile from "@/components/Turnstile";
 import PasswordInput from "@/components/PasswordInput";
@@ -50,7 +51,7 @@ export default function RegisterForm({ siteKey }: { siteKey: string }) {
   }
 
   return (
-    <form action={formAction} className="grid gap-6 sm:grid-cols-2">
+    <form action={formAction} onSubmit={submitKeepingInput(formAction)} className="grid gap-6 sm:grid-cols-2">
       {fields.map((f) => (
         <label key={f.key} className={f.full ? "sm:col-span-2" : ""}>
           <span className="log-label flex items-center gap-2 text-field">

@@ -96,7 +96,7 @@ export async function updateProfileAction(_prev: ProfileState, formData: FormDat
 
   let avatarUrl: string | null = null;
   try {
-    avatarUrl = await saveUpload(formData.get("avatar"), `u${user.id}-${Date.now()}`);
+    avatarUrl = await saveUpload(formData.get("avatar"), `u${user.id}-${Date.now()}`, { avatar: true });
   } catch (err) {
     return { ok: false, message: err instanceof UploadError ? m[err.code] : m.photoFailed };
   }

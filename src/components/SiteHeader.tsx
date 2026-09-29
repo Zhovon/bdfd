@@ -58,7 +58,8 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
             <>
               <Link
                 href="/login"
-                className="log-label rounded-full px-3 py-2 text-field transition-colors hover:text-brand"
+                // Phones reach log-in from the menu and the hero, which frees room for the name.
+                className="log-label hidden whitespace-nowrap rounded-full px-3 py-2 text-field transition-colors hover:text-brand sm:inline-block"
               >
                 {t.header.login}
               </Link>

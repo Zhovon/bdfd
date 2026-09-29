@@ -34,7 +34,7 @@ export default function Brand({
 
   const chip = size === "sm" ? "h-9 w-9" : "h-11 w-11";
   const mark = size === "sm" ? "h-5 w-5" : "h-6 w-6";
-  const titleSize = size === "sm" ? "text-sm" : "text-base sm:text-lg";
+  const titleSize = size === "sm" ? "text-sm" : "text-[0.95rem] sm:text-lg";
   const titleColor = tone === "onDark" ? "text-husk" : "text-field";
   const eyebrowColor = tone === "onDark" ? "text-grain" : "text-brand";
 

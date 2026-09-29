@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useI18n } from "./I18nProvider";
 import Lightbox, { type MediaItem } from "./Lightbox";
+import { photoSrcSet } from "@/lib/media";
 
 /**
  * A post's media: one main image inline plus a "View gallery" button that opens
@@ -42,6 +43,8 @@ export default function PostMedia({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
+              srcSet={photoSrcSet(mainImage)}
+              sizes="(min-width: 768px) 768px, 100vw"
               alt=""
               className="aspect-[16/9] w-full object-cover transition-transform hover:scale-[1.02]"
             />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { submitKeepingInput } from "@/lib/forms";
 import Link from "next/link";
 import { login, type LoginState } from "@/app/actions";
 import PasswordInput from "@/components/PasswordInput";
@@ -11,7 +12,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
 
   return (
-    <form action={formAction} className="w-full max-w-sm">
+    <form action={formAction} onSubmit={submitKeepingInput(formAction)} className="w-full max-w-sm">
       <p className="log-label text-brand">{t.auth.members}</p>
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
         {t.auth.logIn}

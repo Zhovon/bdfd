@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "./I18nProvider";
+import { thumbUrl } from "@/lib/media";
 
 const noopSubscribe = () => () => {};
 
@@ -148,7 +149,7 @@ export default function Lightbox({
               >
                 {item.kind === "image" ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={item.src} alt="" className="h-full w-full object-cover" />
+                  <img src={thumbUrl(item.src)} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <span className="grid h-full w-full place-items-center bg-husk/15 text-husk">▶</span>
                 )}

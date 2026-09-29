@@ -3,8 +3,8 @@ import type { en } from "./en";
 /** Bangla dictionary — mirrors the English shape (enforced by `typeof en`). */
 export const bn: typeof en = {
   brand: {
-    name: "খাদ্য কর্মকর্তা পোর্টাল",
-    short: "খাদ্য কর্মকর্তা পোর্টাল",
+    name: "আমরা খাদ্য পরিবার",
+    short: "আমরা খাদ্য পরিবার",
     eyebrow: "কর্মকর্তা ও কর্মচারী নেটওয়ার্ক",
     tagline:
       "খাদ্য বিভাগের কর্মকর্তা ও কর্মচারীদের অনলাইন যোগাযোগ প্ল্যাটফর্ম — নোটিশ, ভ্রমণ, কল্যাণ ও রক্তদাতা তালিকা।",
@@ -25,6 +25,7 @@ export const bn: typeof en = {
     logOut: "লগ আউট",
     admin: "অ্যাডমিন",
     total: "মোট",
+    preparingPhotos: "ছবি প্রস্তুত হচ্ছে…",
   },
   header: {
     menu: "মেনু",
@@ -441,6 +442,13 @@ export const bn: typeof en = {
     noPayments: "এখনো কোনো পেমেন্ট জানানো হয়নি।",
     verify: "যাচাই",
     paymentStatus: { reported: "জানানো হয়েছে", verified: "যাচাইকৃত", rejected: "প্রত্যাখ্যাত" },
+    search: "খুঁজুন",
+    clear: "মুছে ফেলুন",
+    allStatuses: "সব অবস্থা",
+    searchMembers: "নাম, ইমেইল, মোবাইল, সার্ভিস আইডি বা কর্মস্থল",
+    searchPayments: "নাম, লেনদেন আইডি, মাধ্যম বা নোটিশ",
+    noMatches: "এই ফিল্টারে কিছু পাওয়া যায়নি।",
+    showing: "{total}টির মধ্যে {from}–{to}",
     accountsTitle: "গ্রহণকারী অ্যাকাউন্ট",
     accountsIntro:
       "প্রতিটি পেমেন্ট পৃষ্ঠায় সদস্যদের দেখানো মোবাইল ব্যাংকিং ও ব্যাংক অ্যাকাউন্ট। এখানে অ্যাকাউন্ট নম্বর ও নির্দেশনা হালনাগাদ করুন।",
@@ -450,6 +458,29 @@ export const bn: typeof en = {
     accountNumber: "অ্যাকাউন্ট / নম্বর",
     instructions: "নির্দেশনা",
     save: "সংরক্ষণ",
+  },
+  notif: {
+    accountApprovedTitle: "আপনার অ্যাকাউন্ট অনুমোদিত হয়েছে",
+    accountApprovedBody: "স্বাগতম — এখন সদস্য এলাকায় আপনার পূর্ণ প্রবেশাধিকার আছে।",
+    newNotice: "নতুন নোটিশ · {board}",
+    tourConfirmedTitle: "অংশগ্রহণ নিশ্চিত হয়েছে",
+    donationConfirmedTitle: "অনুদান যাচাই হয়েছে",
+    paymentConfirmedBody: "আপনার {amount} পেমেন্ট নিশ্চিত হয়েছে। ধন্যবাদ।",
+    tourRejectedTitle: "অংশগ্রহণ নিশ্চিত হয়নি",
+    donationRejectedTitle: "অনুদান যাচাই হয়নি",
+    paymentRejectedBody: "আপনার {amount} পেমেন্ট নিশ্চিত করা যায়নি। রেফারেন্সটি যাচাই করুন বা অফিসে যোগাযোগ করুন।",
+  },
+  email: {
+    greeting: "প্রিয় {name},",
+    signOff: "শুভেচ্ছান্তে,\nপ্রশাসন, {site}",
+    approvedSubject: "আপনার নিবন্ধন অনুমোদিত হয়েছে",
+    approvedBody: "{site}-এ আপনার নিবন্ধন অনুমোদিত হয়েছে। এখন আপনি লগ ইন করে সদস্য এলাকা ব্যবহার করতে পারবেন।",
+    rejectedSubject: "আপনার নিবন্ধন অনুমোদন করা যায়নি",
+    rejectedBody:
+      "এই মুহূর্তে {site}-এ আপনার নিবন্ধন যাচাই করা যায়নি। ভুল হয়েছে মনে হলে অনুগ্রহ করে প্রশাসনের সঙ্গে যোগাযোগ করুন।",
+    resetSubject: "আপনার পাসওয়ার্ড রিসেট করুন",
+    resetBody:
+      "আমরা আপনার পাসওয়ার্ড রিসেটের একটি অনুরোধ পেয়েছি। নতুন পাসওয়ার্ড নির্ধারণ করতে এক ঘণ্টার মধ্যে নিচের লিংকটি ব্যবহার করুন:\n\n{url}\n\nআপনি এই অনুরোধ না করে থাকলে ইমেইলটি উপেক্ষা করুন।",
   },
   msg: {
     fixFields: "চিহ্নিত ঘরগুলো ঠিক করুন।",
@@ -499,7 +530,7 @@ export const bn: typeof en = {
     unknownPost: "পোস্টটি পাওয়া যায়নি।",
     saveFailed: "পরিবর্তন সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
     saved: "পরিবর্তন সংরক্ষিত হয়েছে।",
-    imageTooBig: "ছবি ৪ MB-এর কম হতে হবে।",
+    imageTooBig: "ছবি ১০ MB-এর কম হতে হবে।",
     imageType: "JPG, PNG, WebP, GIF বা AVIF ছবি ব্যবহার করুন।",
     pdfTooBig: "PDF ১৫ MB-এর কম হতে হবে।",
     pdfType: "একটি PDF ফাইল আপলোড করুন।",

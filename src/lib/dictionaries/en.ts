@@ -5,8 +5,8 @@
  */
 export const en = {
   brand: {
-    name: "Food Officers' Portal",
-    short: "Food Officers' Portal",
+    name: "We the Food Family",
+    short: "We the Food Family",
     eyebrow: "Officers & staff network",
     tagline:
       "An online communication platform for food officers and employees — notices, tours, welfare and a blood directory.",
@@ -28,6 +28,7 @@ export const en = {
     logOut: "Log out",
     admin: "Admin",
     total: "total",
+    preparingPhotos: "Preparing photos…",
   },
   header: {
     menu: "Menu",
@@ -445,6 +446,13 @@ export const en = {
     noPayments: "No payments reported yet.",
     verify: "Verify",
     paymentStatus: { reported: "reported", verified: "verified", rejected: "rejected" },
+    search: "Search",
+    clear: "Clear",
+    allStatuses: "All statuses",
+    searchMembers: "Name, email, mobile, service ID or posting",
+    searchPayments: "Name, transaction ID, method or notice",
+    noMatches: "Nothing matches these filters.",
+    showing: "{from}–{to} of {total}",
     accountsTitle: "Receiving accounts",
     accountsIntro:
       "The mobile-banking and bank accounts shown to members on every payment page. Update the account numbers and instructions here.",
@@ -454,6 +462,32 @@ export const en = {
     accountNumber: "Account / number",
     instructions: "Instructions",
     save: "Save",
+  },
+  /** In-app notifications; {placeholders} are filled when shown. */
+  notif: {
+    accountApprovedTitle: "Your account is approved",
+    accountApprovedBody: "Welcome — you now have full access to the members' area.",
+    newNotice: "New notice · {board}",
+    tourConfirmedTitle: "Participation confirmed",
+    donationConfirmedTitle: "Donation verified",
+    paymentConfirmedBody: "Your {amount} payment has been confirmed. Thank you.",
+    tourRejectedTitle: "Participation not confirmed",
+    donationRejectedTitle: "Donation not verified",
+    paymentRejectedBody: "We couldn't confirm your {amount} payment. Please check the reference or contact the office.",
+  },
+  /** Emails are sent in Bangla and English together; {placeholders} are filled in. */
+  email: {
+    greeting: "Dear {name},",
+    signOff: "Regards,\nAdministration, {site}",
+    approvedSubject: "Your registration is approved",
+    approvedBody:
+      "Your registration for {site} has been approved. You can now log in and use the members' area.",
+    rejectedSubject: "Your registration could not be approved",
+    rejectedBody:
+      "We were unable to verify your registration for {site} at this time. Please contact the administration if you believe this is an error.",
+    resetSubject: "Reset your password",
+    resetBody:
+      "We received a request to reset your password. Use the link below within one hour to set a new one:\n\n{url}\n\nIf you didn't request this, you can ignore this email.",
   },
   msg: {
     fixFields: "Please fix the highlighted fields.",
@@ -503,7 +537,7 @@ export const en = {
     unknownPost: "Unknown post.",
     saveFailed: "Couldn't save the changes. Please try again.",
     saved: "Changes saved.",
-    imageTooBig: "Image must be under 4 MB.",
+    imageTooBig: "Image must be under 10 MB.",
     imageType: "Use a JPG, PNG, WebP, GIF or AVIF image.",
     pdfTooBig: "PDF must be under 15 MB.",
     pdfType: "Upload a PDF file.",

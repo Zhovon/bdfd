@@ -1,6 +1,7 @@
 import "server-only";
 import type { PoolClient } from "pg";
 import { pool, ensureSchema, isDbId, withTransaction } from "@/lib/db";
+import { pageWindow, type Paged } from "@/lib/paging";
 
 export type PostCategory = "travel" | "welfare" | "condolence" | "association";
 
@@ -129,13 +130,7 @@ export const acceptsPayment = (p: { category: PostCategory; paymentMode: Payment
 /** Notice cards per page on the board + admin lists. */
 export const POSTS_PER_PAGE = 9;
 
-/** A single windowed page of results plus the totals needed to draw controls. */
-export type Paged<T> = {
-  items: T[];
-  total: number; // matching rows across all pages
-  page: number; // the (clamped) 1-based page returned
-  pageCount: number; // total number of pages (>= 1)
-};
+export type { Paged } from "@/lib/paging";
 
 /**
  * One page of post cards. Runs a cheap COUNT first so the page is always
@@ -149,9 +144,7 @@ async function pagePosts(where: string, params: unknown[], page: number): Promis
     params,
   );
   const total = Number(cnt[0].total);
-  const pageCount = Math.max(1, Math.ceil(total / POSTS_PER_PAGE));
-  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
-  const offset = (current - 1) * POSTS_PER_PAGE;
+  const { page: current, pageCount, offset } = pageWindow(total, page, POSTS_PER_PAGE);
   const { rows } = await pool.query<PostRow>(
     `SELECT ${POST_COLS} FROM posts ${where}
      ORDER BY created_at DESC, id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,

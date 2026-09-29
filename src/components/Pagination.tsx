@@ -9,15 +9,24 @@ export default async function Pagination({
   page,
   pageCount,
   basePath,
+  query = {},
 }: {
   page: number;
   pageCount: number;
   basePath: string;
+  /** Other search params (e.g. filters) to keep on every page link. */
+  query?: Record<string, string | undefined>;
 }) {
   if (pageCount <= 1) return null;
   const t = (await getDict()).pager;
 
-  const href = (n: number) => (n <= 1 ? basePath : `${basePath}?page=${n}`);
+  const href = (n: number) => {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(query)) if (v) params.set(k, v);
+    if (n > 1) params.set("page", String(n));
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
   // A compact window of page numbers around the current page.
   const from = Math.max(1, page - 2);
   const to = Math.min(pageCount, page + 2);
