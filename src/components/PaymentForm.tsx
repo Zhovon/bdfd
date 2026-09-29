@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { submitKeepingInput } from "@/lib/forms";
 import { reportDonation, type DonationState } from "@/app/portal/actions";
 import { useI18n } from "@/components/I18nProvider";
 
@@ -42,7 +43,7 @@ export default function PaymentForm({
     "mt-2 w-full border-b-2 border-line bg-transparent pb-2 text-lg text-field outline-none focus:border-brand";
 
   return (
-    <form action={formAction} className="grid gap-5 rounded-xl border border-line bg-husk p-6 sm:grid-cols-2">
+    <form action={formAction} onSubmit={submitKeepingInput(formAction)} className="grid gap-5 rounded-xl border border-line bg-husk p-6 sm:grid-cols-2">
       <input type="hidden" name="postId" value={postId} />
       <input type="hidden" name="kind" value={kind} />
 

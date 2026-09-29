@@ -4,14 +4,18 @@ import { useState } from "react";
 import { shrinkImages } from "@/lib/client-image";
 import { useI18n } from "./I18nProvider";
 
-type Props = Omit<React.ComponentPropsWithoutRef<"input">, "type" | "onChange">;
+type Props = Omit<React.ComponentPropsWithoutRef<"input">, "type" | "onChange"> & {
+  /** Told when photo preparation starts and finishes, e.g. to disable submit. */
+  onBusyChange?: (busy: boolean) => void;
+};
 
 /**
  * A photo file input that shrinks the chosen photos in the browser before the
- * form is submitted. While that runs, the input reports itself invalid, so the
- * browser holds a submit until the smaller files are in place.
+ * form is submitted. While that runs the input reports itself invalid (so a
+ * submit waits for the smaller files) and tells the form via `onBusyChange`,
+ * so it can disable its button rather than leave the click unexplained.
  */
-export default function ImageInput(props: Props) {
+export default function ImageInput({ onBusyChange, ...props }: Props) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
@@ -23,6 +27,7 @@ export default function ImageInput(props: Props) {
     if (!files?.length || typeof DataTransfer === "undefined") return;
 
     setBusy(true);
+    onBusyChange?.(true);
     input.setCustomValidity(t.common.preparingPhotos);
     try {
       const shrunk = await shrinkImages(files);
@@ -34,6 +39,7 @@ export default function ImageInput(props: Props) {
     } finally {
       input.setCustomValidity("");
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 

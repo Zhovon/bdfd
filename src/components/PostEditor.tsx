@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { submitKeepingInput } from "@/lib/forms";
 import { addPost, editPost, type PostFormState } from "@/app/admin/actions";
 import { useI18n } from "@/components/I18nProvider";
 import ImageInput from "@/components/ImageInput";
@@ -57,14 +58,18 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
     })) ?? [],
   );
   const nextKey = useRef((initial?.blocks.length ?? 0) + 1);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Photo inputs still shrinking in the browser; publishing waits for them.
+  const [preparing, setPreparing] = useState(0);
+  const trackBusy = (busy: boolean) => setPreparing((n) => Math.max(0, n + (busy ? 1 : -1)));
 
   const addSection = () =>
     setSections((s) => [...s, { key: nextKey.current++, id: null, heading: "", body: "", images: [] }]);
   const removeSection = (key: number) => setSections((s) => s.filter((x) => x.key !== key));
 
-  // Reset a fresh post after a successful publish (but keep an edited one).
-  // React resets the uncontrolled fields itself; this clears the controlled ones,
-  // adjusting state during render when a new result arrives.
+  // Reset a fresh post after a successful publish (but keep an edited one, and
+  // keep everything typed when the server rejects it). Controlled state is
+  // adjusted during render when a new result arrives; the DOM fields below.
   const [handled, setHandled] = useState(state);
   if (state !== handled) {
     setHandled(state);
@@ -74,9 +79,17 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
       setCategory("travel");
     }
   }
+  useEffect(() => {
+    if (state?.ok && !editing) formRef.current?.reset();
+  }, [state, editing]);
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={submitKeepingInput(formAction)}
+      className="grid gap-5"
+    >
       <input type="hidden" name="blockCount" value={sections.length} />
       {initial && <input type="hidden" name="id" value={initial.id} />}
 
@@ -138,7 +151,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
             · {t.common.optional} · {e.coverHint}
           </span>
         </span>
-        <ImageInput name="cover" accept="image/*" multiple className={fileInput} />
+        <ImageInput name="cover" accept="image/*" multiple className={fileInput} onBusyChange={trackBusy} />
       </label>
 
       <label>
@@ -267,7 +280,13 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
               <span className="log-label flex items-center gap-2 text-field">
                 {e.addSectionPhotos} <span className="text-stone">· {t.common.optional}</span>
               </span>
-              <ImageInput name={`block-images-${i}`} accept="image/*" multiple className={fileInput} />
+              <ImageInput
+                name={`block-images-${i}`}
+                accept="image/*"
+                multiple
+                className={fileInput}
+                onBusyChange={trackBusy}
+              />
             </label>
             <button
               type="button"
@@ -291,10 +310,16 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
       <div className="flex items-center gap-4">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || preparing > 0}
           className="rounded-full bg-brand px-7 py-3 font-semibold text-husk transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {pending ? t.common.saving : editing ? e.saveChanges : e.publish}
+          {preparing > 0
+            ? t.common.preparingPhotos
+            : pending
+              ? t.common.saving
+              : editing
+                ? e.saveChanges
+                : e.publish}
         </button>
         {state && (
           <span className={`text-sm ${state.ok ? "text-brand" : "text-grain"}`}>{state.message}</span>

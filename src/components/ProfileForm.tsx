@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { submitKeepingInput } from "@/lib/forms";
 import { updateProfileAction, type ProfileState } from "@/app/portal/actions";
 import { BLOOD_GROUPS } from "@/lib/site";
 import { useI18n } from "@/components/I18nProvider";
@@ -23,10 +24,12 @@ type Props = {
 
 export default function ProfileForm({ user }: Props) {
   const [state, formAction, pending] = useActionState<ProfileState, FormData>(updateProfileAction, null);
-  const t = useI18n().t.profile;
+  const { t: dict } = useI18n();
+  const t = dict.profile;
+  const [preparing, setPreparing] = useState(false);
 
   return (
-    <form action={formAction} className="grid gap-6">
+    <form action={formAction} onSubmit={submitKeepingInput(formAction)} className="grid gap-6">
       <div className="flex items-center gap-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -36,7 +39,12 @@ export default function ProfileForm({ user }: Props) {
         />
         <label className="text-sm">
           <span className="log-label text-field">{t.photo}</span>
-          <ImageInput name="avatar" accept="image/*" className="mt-2 block text-sm text-stone" />
+          <ImageInput
+            name="avatar"
+            accept="image/*"
+            className="mt-2 block text-sm text-stone"
+            onBusyChange={setPreparing}
+          />
         </label>
       </div>
 
@@ -83,10 +91,10 @@ export default function ProfileForm({ user }: Props) {
       <div className="flex items-center gap-4">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || preparing}
           className="rounded-full bg-brand px-8 py-3 font-semibold text-husk transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {pending ? t.saving : t.save}
+          {preparing ? dict.common.preparingPhotos : pending ? t.saving : t.save}
         </button>
         {state && (
           <span className={`text-sm ${state.ok ? "text-brand" : "text-grain"}`}>{state.message}</span>

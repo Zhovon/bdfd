@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { submitKeepingInput } from "@/lib/forms";
 import Link from "next/link";
 import { requestPasswordReset, type ForgotState } from "@/app/actions";
 import Turnstile from "@/components/Turnstile";
@@ -23,7 +24,7 @@ export default function ForgotForm({ siteKey }: { siteKey: string }) {
   }
 
   return (
-    <form action={formAction} className="w-full max-w-sm">
+    <form action={formAction} onSubmit={submitKeepingInput(formAction)} className="w-full max-w-sm">
       <p className="log-label text-brand">{f.kicker}</p>
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
         {f.title}
