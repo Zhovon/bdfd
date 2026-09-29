@@ -3,8 +3,8 @@ import type { en } from "./en";
 /** Bangla dictionary — mirrors the English shape (enforced by `typeof en`). */
 export const bn: typeof en = {
   brand: {
-    name: "খাদ্য কর্মকর্তা পোর্টাল",
-    short: "খাদ্য কর্মকর্তা পোর্টাল",
+    name: "আমরা খাদ্য পরিবার",
+    short: "আমরা খাদ্য পরিবার",
     eyebrow: "কর্মকর্তা ও কর্মচারী নেটওয়ার্ক",
     tagline:
       "খাদ্য বিভাগের কর্মকর্তা ও কর্মচারীদের অনলাইন যোগাযোগ প্ল্যাটফর্ম — নোটিশ, ভ্রমণ, কল্যাণ ও রক্তদাতা তালিকা।",

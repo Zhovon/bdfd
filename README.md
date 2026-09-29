@@ -1,4 +1,4 @@
-# Food Officers' Portal — prototype
+# We the Food Family — prototype
 
 A closed-membership online communication platform for food officers and employees. The
 public landing is open; the core is members-only (login-gated). Officers register,

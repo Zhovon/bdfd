@@ -5,8 +5,8 @@
  */
 export const en = {
   brand: {
-    name: "Food Officers' Portal",
-    short: "Food Officers' Portal",
+    name: "We the Food Family",
+    short: "We the Food Family",
     eyebrow: "Officers & staff network",
     tagline:
       "An online communication platform for food officers and employees — notices, tours, welfare and a blood directory.",

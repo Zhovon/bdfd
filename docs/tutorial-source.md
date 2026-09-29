@@ -1,4 +1,4 @@
-# Food Officers' Portal — Tutorial Source
+# We the Food Family — Tutorial Source
 
 > Source material for a NotebookLM tutorial. It describes what the portal is and
 > the exact steps members and administrators follow. Written to be turned into a
