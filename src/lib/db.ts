@@ -1,6 +1,7 @@
 import "server-only";
 import { Pool, type PoolClient } from "pg";
 import { hashPassword } from "@/lib/password";
+import { likePattern, pageWindow, type Paged } from "@/lib/paging";
 
 // Reuse the pool across hot reloads in dev so we don't exhaust connections.
 const globalForDb = globalThis as unknown as { _portalPool?: Pool };
@@ -473,6 +474,39 @@ export async function listUsers(status?: UserStatus): Promise<User[]> {
       )
     : await pool.query<User>(`SELECT ${PUBLIC_COLS} FROM users ORDER BY created_at DESC, id DESC`);
   return rows;
+}
+
+/** Rows per page in the admin member list. */
+export const USERS_PER_PAGE = 25;
+
+/**
+ * One page of members for the admin list, newest first, optionally narrowed by
+ * status and a free-text search over name, email, mobile, service ID,
+ * designation and posting.
+ */
+export async function searchUsers(opts: {
+  q?: string;
+  status?: UserStatus;
+  page?: number;
+}): Promise<Paged<User>> {
+  await ensureSchema();
+  const pattern = likePattern(opts.q);
+  const where = `WHERE ($1::text IS NULL OR status = $1)
+    AND ($2::text IS NULL OR full_name ILIKE $2 ESCAPE '\\' OR official_email ILIKE $2 ESCAPE '\\'
+         OR mobile ILIKE $2 ESCAPE '\\' OR service_id ILIKE $2 ESCAPE '\\'
+         OR designation ILIKE $2 ESCAPE '\\' OR posting ILIKE $2 ESCAPE '\\')`;
+  const params = [opts.status ?? null, pattern];
+  const { rows: cnt } = await pool.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM users ${where}`,
+    params,
+  );
+  const total = cnt[0].n;
+  const { page, pageCount, offset } = pageWindow(total, opts.page ?? 1, USERS_PER_PAGE);
+  const { rows } = await pool.query<User>(
+    `SELECT ${PUBLIC_COLS} FROM users ${where} ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4`,
+    [...params, USERS_PER_PAGE, offset],
+  );
+  return { items: rows, total, page, pageCount };
 }
 
 export async function listBloodDonors(group?: string): Promise<User[]> {

@@ -446,6 +446,13 @@ export const en = {
     noPayments: "No payments reported yet.",
     verify: "Verify",
     paymentStatus: { reported: "reported", verified: "verified", rejected: "rejected" },
+    search: "Search",
+    clear: "Clear",
+    allStatuses: "All statuses",
+    searchMembers: "Name, email, mobile, service ID or posting",
+    searchPayments: "Name, transaction ID, method or notice",
+    noMatches: "Nothing matches these filters.",
+    showing: "{from}–{to} of {total}",
     accountsTitle: "Receiving accounts",
     accountsIntro:
       "The mobile-banking and bank accounts shown to members on every payment page. Update the account numbers and instructions here.",

@@ -1,5 +1,6 @@
 import "server-only";
 import { pool, ensureSchema, isDbId } from "@/lib/db";
+import { likePattern, pageWindow, type Paged } from "@/lib/paging";
 
 export type PaymentMethod = {
   id: number;
@@ -96,17 +97,36 @@ export async function transactionRefTaken(ref: string): Promise<boolean> {
   return (rowCount ?? 0) > 0;
 }
 
-export async function listDonations(status?: DonationStatus): Promise<Donation[]> {
+/** Rows per page in the admin payments list. */
+export const DONATIONS_PER_PAGE = 25;
+
+/**
+ * One page of payment reports for the admin list, optionally narrowed by status
+ * and a search over payer name, transaction reference, method and notice title.
+ * Reports still awaiting a decision come first, since those need action.
+ */
+export async function searchDonations(opts: {
+  q?: string;
+  status?: DonationStatus;
+  page?: number;
+}): Promise<Paged<Donation>> {
   await ensureSchema();
-  const base = `SELECT d.*, p.title AS post_title
-                FROM donations d LEFT JOIN posts p ON p.id = d.post_id`;
-  const { rows } = status
-    ? await pool.query<Donation>(
-        `${base} WHERE d.status = $1 ORDER BY d.created_at DESC, d.id DESC`,
-        [status],
-      )
-    : await pool.query<Donation>(`${base} ORDER BY d.created_at DESC, d.id DESC`);
-  return rows;
+  const pattern = likePattern(opts.q);
+  const from = `FROM donations d LEFT JOIN posts p ON p.id = d.post_id
+    WHERE ($1::text IS NULL OR d.status = $1)
+      AND ($2::text IS NULL OR d.donor_name ILIKE $2 ESCAPE '\\' OR d.transaction_ref ILIKE $2 ESCAPE '\\'
+           OR d.method ILIKE $2 ESCAPE '\\' OR p.title ILIKE $2 ESCAPE '\\')`;
+  const params = [opts.status ?? null, pattern];
+  const { rows: cnt } = await pool.query<{ n: number }>(`SELECT count(*)::int AS n ${from}`, params);
+  const total = cnt[0].n;
+  const { page, pageCount, offset } = pageWindow(total, opts.page ?? 1, DONATIONS_PER_PAGE);
+  const { rows } = await pool.query<Donation>(
+    `SELECT d.*, p.title AS post_title ${from}
+     ORDER BY (d.status = 'reported') DESC, d.created_at DESC, d.id DESC
+     LIMIT $3 OFFSET $4`,
+    [...params, DONATIONS_PER_PAGE, offset],
+  );
+  return { items: rows, total, page, pageCount };
 }
 
 export async function getDonation(id: number): Promise<Donation | null> {

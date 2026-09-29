@@ -1,6 +1,14 @@
-import { listDonations, donationTotals, type Donation } from "@/lib/payments";
+import {
+  searchDonations,
+  donationTotals,
+  DONATIONS_PER_PAGE,
+  type Donation,
+  type DonationStatus,
+} from "@/lib/payments";
 import { verifyDonation, rejectDonation } from "../actions";
 import ConfirmButton from "@/components/ConfirmButton";
+import ListFilters from "@/components/ListFilters";
+import Pagination from "@/components/Pagination";
 import { getDict } from "@/lib/i18n";
 
 const fmt = (d: Date, locale: string) =>
@@ -13,8 +21,21 @@ const badge: Record<Donation["status"], string> = {
   rejected: "bg-stone/15 text-stone",
 };
 
-export default async function AdminDonations() {
-  const [donations, totals, dict] = await Promise.all([listDonations(), donationTotals(), getDict()]);
+const STATUSES: DonationStatus[] = ["reported", "verified", "rejected"];
+
+export default async function AdminDonations({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+}) {
+  const { q, status: rawStatus, page } = await searchParams;
+  const status = STATUSES.find((s) => s === rawStatus);
+  const [result, totals, dict] = await Promise.all([
+    searchDonations({ q, status, page: Number(page) || 1 }),
+    donationTotals(),
+    getDict(),
+  ]);
+  const donations = result.items;
   const t = dict.adminUi;
 
   return (
@@ -28,6 +49,16 @@ export default async function AdminDonations() {
         </span>
       </div>
 
+      <ListFilters
+        basePath="/admin/donations"
+        q={q}
+        status={status}
+        statuses={t.paymentStatus}
+        placeholder={t.searchPayments}
+        total={result.total}
+        page={result.page}
+        perPage={DONATIONS_PER_PAGE}
+      />
       <div className="mt-6 overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
@@ -43,7 +74,7 @@ export default async function AdminDonations() {
             {donations.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-10 text-center text-stone">
-                  {t.noPayments}
+                  {q || status ? t.noMatches : t.noPayments}
                 </td>
               </tr>
             ) : (
@@ -99,6 +130,12 @@ export default async function AdminDonations() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={result.page}
+        pageCount={result.pageCount}
+        basePath="/admin/donations"
+        query={{ q, status }}
+      />
     </div>
   );
 }

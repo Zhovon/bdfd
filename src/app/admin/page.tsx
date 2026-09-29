@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { listUsers, statusCounts, type User } from "@/lib/db";
+import { listUsers, searchUsers, statusCounts, USERS_PER_PAGE, type User, type UserStatus } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { approveUser, rejectUser, blockUser, unblockUser, setRole, removeUser } from "./actions";
 import ConfirmButton from "@/components/ConfirmButton";
+import ListFilters from "@/components/ListFilters";
+import Pagination from "@/components/Pagination";
 import { getDict } from "@/lib/i18n";
 
 const badge: Record<User["status"], string> = {
@@ -12,12 +14,20 @@ const badge: Record<User["status"], string> = {
   blocked: "bg-stone/15 text-stone",
 };
 
-export default async function MembershipPage() {
+const STATUSES: UserStatus[] = ["pending", "approved", "rejected", "blocked"];
+
+export default async function MembershipPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+}) {
   await requireAdmin(); // moderators are redirected to /admin/content
+  const { q, status: rawStatus, page } = await searchParams;
+  const status = STATUSES.find((s) => s === rawStatus);
   const [counts, pending, members, dict] = await Promise.all([
     statusCounts(),
     listUsers("pending"),
-    listUsers(),
+    searchUsers({ q, status, page: Number(page) || 1 }),
     getDict(),
   ]);
   const t = dict.adminUi;
@@ -113,8 +123,18 @@ export default async function MembershipPage() {
 
       {/* All members */}
       <h3 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-        {t.allMembers} <span className="text-stone">({members.length})</span>
+        {t.allMembers} <span className="text-stone">({counts.total})</span>
       </h3>
+      <ListFilters
+        basePath="/admin"
+        q={q}
+        status={status}
+        statuses={t.status}
+        placeholder={t.searchMembers}
+        total={members.total}
+        page={members.page}
+        perPage={USERS_PER_PAGE}
+      />
       <div className="mt-5 overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
@@ -127,7 +147,14 @@ export default async function MembershipPage() {
             </tr>
           </thead>
           <tbody>
-            {members.map((u) => (
+            {members.items.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-stone">
+                  {t.noMatches}
+                </td>
+              </tr>
+            )}
+            {members.items.map((u) => (
               <tr key={u.id} className="border-b border-line/60 align-top hover:bg-husk-deep/50">
                 <td className="py-3 pr-4 font-semibold text-field">{u.full_name}</td>
                 <td className="py-3 pr-4 text-field/90">
@@ -197,6 +224,12 @@ export default async function MembershipPage() {
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={members.page}
+        pageCount={members.pageCount}
+        basePath="/admin"
+        query={{ q, status }}
+      />
     </div>
   );
 }
