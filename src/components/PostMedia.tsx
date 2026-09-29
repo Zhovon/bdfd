@@ -1,36 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useI18n } from "./I18nProvider";
-
-const noopSubscribe = () => () => {};
-
-type Item = { kind: "image" | "video"; src: string };
-
-/** Convert a YouTube/Vimeo/Facebook link to an embeddable URL, or null. */
-function toEmbed(url: string): string | null {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, "");
-    if (host === "youtu.be") return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
-    if (host.endsWith("youtube.com")) {
-      const v = u.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
-      if (u.pathname.startsWith("/embed/")) return url;
-    }
-    if (host === "vimeo.com") {
-      const id = u.pathname.split("/").filter(Boolean)[0];
-      if (id) return `https://player.vimeo.com/video/${id}`;
-    }
-    if (host.endsWith("facebook.com") || host === "fb.watch") {
-      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+import Lightbox, { type MediaItem } from "./Lightbox";
 
 /**
  * A post's media: one main image inline plus a "View gallery" button that opens
@@ -46,36 +18,11 @@ export default function PostMedia({
   title: string;
 }) {
   const { t } = useI18n();
-  const items: Item[] = [
+  const items: MediaItem[] = [
     ...images.map((src) => ({ kind: "image" as const, src })),
     ...videos.map((src) => ({ kind: "video" as const, src })),
   ];
-  const [open, setOpen] = useState(false);
-  const [index, setIndex] = useState(0);
-  // True only in the browser (portals need document.body); false during SSR.
-  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
-
-  const show = useCallback((i: number) => {
-    setIndex(i);
-    setOpen(true);
-  }, []);
-  const next = useCallback(() => setIndex((i) => (i + 1) % items.length), [items.length]);
-  const prev = useCallback(() => setIndex((i) => (i - 1 + items.length) % items.length), [items.length]);
-
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-      else if (e.key === "ArrowRight") next();
-      else if (e.key === "ArrowLeft") prev();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, next, prev]);
+  const [open, setOpen] = useState<number | null>(null);
 
   if (items.length === 0) return null;
 
@@ -91,7 +38,7 @@ export default function PostMedia({
     <div className="mt-4">
       <div className="relative overflow-hidden rounded-xl border border-line">
         {mainImage ? (
-          <button type="button" onClick={() => show(0)} className="block w-full" aria-label={t.a11y.viewPhoto}>
+          <button type="button" onClick={() => setOpen(0)} className="block w-full" aria-label={t.a11y.viewPhoto}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
@@ -102,7 +49,7 @@ export default function PostMedia({
         ) : (
           <button
             type="button"
-            onClick={() => show(0)}
+            onClick={() => setOpen(0)}
             className="flex aspect-[16/9] w-full items-center justify-center bg-field text-husk"
             aria-label={t.a11y.playVideo}
           >
@@ -113,7 +60,7 @@ export default function PostMedia({
         {items.length > 1 && (
           <button
             type="button"
-            onClick={() => show(0)}
+            onClick={() => setOpen(0)}
             className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-field/85 px-4 py-2 text-sm font-semibold text-husk backdrop-blur-sm transition-colors hover:bg-field"
           >
             <GridIcon />
@@ -122,97 +69,8 @@ export default function PostMedia({
         )}
       </div>
 
-      {/* Lightbox */}
-      {mounted &&
-        open &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${title} — ${index + 1} of ${items.length}`}
-            className="fixed inset-0 z-[120] flex flex-col bg-field/95 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          >
-            <div className="flex items-center justify-between px-5 py-3 text-husk">
-              <span className="log-label text-husk/70">
-                {index + 1} / {items.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="log-label rounded-full border border-husk/30 px-4 py-2 text-husk transition-colors hover:bg-husk hover:text-field"
-              >
-                {t.notice.close}
-              </button>
-            </div>
-
-            <div
-              className="flex flex-1 items-center justify-center gap-3 px-4 pb-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={prev}
-                  aria-label={t.a11y.previous}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-husk/30 text-husk transition-colors hover:bg-husk hover:text-field"
-                >
-                  ‹
-                </button>
-              )}
-              <MediaView item={items[index]} title={title} index={index} />
-              {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={next}
-                  aria-label={t.a11y.next}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-husk/30 text-husk transition-colors hover:bg-husk hover:text-field"
-                >
-                  ›
-                </button>
-              )}
-            </div>
-          </div>,
-          document.body,
-        )}
+      <Lightbox items={items} title={title} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </div>
-  );
-}
-
-function MediaView({ item, title, index }: { item: Item; title: string; index: number }) {
-  if (item.kind === "image") {
-    return (
-      /* eslint-disable-next-line @next/next/no-img-element */
-      <img
-        src={item.src}
-        alt={`${title} photo ${index + 1}`}
-        className="max-h-[80vh] max-w-full rounded-lg object-contain"
-      />
-    );
-  }
-  const embed = toEmbed(item.src);
-  if (embed) {
-    return (
-      <div className="aspect-video w-full max-w-4xl">
-        <iframe
-          src={embed}
-          title={`${title} video ${index + 1}`}
-          className="h-full w-full rounded-lg"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      </div>
-    );
-  }
-  return (
-    <a
-      href={item.src}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="rounded-full bg-husk px-6 py-3 font-semibold text-field"
-    >
-      Open video ↗
-    </a>
   );
 }
 
@@ -224,7 +82,8 @@ function PlayIcon() {
     </svg>
   );
 }
-function GridIcon() {
+
+export function GridIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

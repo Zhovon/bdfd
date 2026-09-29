@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PostMedia from "@/components/PostMedia";
+import SectionGallery from "@/components/SectionGallery";
 import PaymentCTA from "@/components/PaymentCTA";
 import { requireUser } from "@/lib/session";
 import { acceptsPayment, getPost } from "@/lib/content";
@@ -23,7 +24,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
   const totals = acceptsPayment(post) ? await postTotals(post.id) : null;
 
   // The cover gallery (plus any videos) sits between the title and the body;
-  // section-specific photos render inline with their own section below.
+  // each section below carries its own separate gallery.
   const photos = post.cover;
   // Sections that carry text or their own photos.
   const textBlocks = post.blocks.filter((b) => b.heading || b.body || b.images.length > 0);
@@ -75,26 +76,11 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
               {b.body && (
                 <p className="mt-3 whitespace-pre-line leading-relaxed text-field/85">{b.body}</p>
               )}
-              {b.images.length > 0 && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {b.images.map((src) => (
-                    <a
-                      key={src}
-                      href={src}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block overflow-hidden rounded-xl border border-line"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={src}
-                        alt=""
-                        className="aspect-[4/3] w-full object-cover transition-transform hover:scale-[1.02]"
-                      />
-                    </a>
-                  ))}
-                </div>
-              )}
+              {/* This section's own gallery — its viewer pages through only these photos */}
+              <SectionGallery
+                images={b.images}
+                title={b.heading || `${post.title} · ${String(i + 1).padStart(2, "0")}`}
+              />
             </section>
           ))}
         </div>
