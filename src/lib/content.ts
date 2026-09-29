@@ -299,9 +299,20 @@ async function insertPost(db: PoolClient, input: NewPost): Promise<number> {
   return postId;
 }
 
-export async function deletePost(id: number): Promise<void> {
+/** Delete a post. Returns the URLs of its stored files so the caller can remove them. */
+export async function deletePost(id: number): Promise<string[]> {
+  if (!isDbId(id)) return [];
   await ensureSchema();
-  await pool.query(`DELETE FROM posts WHERE id = $1`, [id]);
+  return withTransaction(async (db) => {
+    const { rows } = await db.query<{ url: string | null }>(
+      `SELECT url FROM post_images WHERE post_id = $1
+       UNION SELECT image_url FROM posts WHERE id = $1
+       UNION SELECT pdf_url FROM posts WHERE id = $1`,
+      [id],
+    );
+    await db.query(`DELETE FROM posts WHERE id = $1`, [id]);
+    return rows.map((r) => r.url).filter((u): u is string => Boolean(u));
+  });
 }
 
 export type ImageRef = { id: number; url: string };
@@ -396,33 +407,38 @@ async function appendImages(
   }
 }
 
-export async function updatePost(id: number, input: EditPost): Promise<void> {
+/** Apply an edit. Returns the URLs of files it dropped so the caller can remove them. */
+export async function updatePost(id: number, input: EditPost): Promise<string[]> {
   await ensureSchema();
-  await withTransaction((db) => applyPostEdit(db, id, input));
+  return withTransaction((db) => applyPostEdit(db, id, input));
 }
 
-async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promise<void> {
+async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promise<string[]> {
   const fee = input.paymentMode === "participation" ? input.feeAmount : null;
+  const dropped: string[] = [];
 
   // Remove images (cover or section) the editor ticked for deletion.
   if (input.removeImageIds.length > 0) {
-    await db.query(`DELETE FROM post_images WHERE post_id = $1 AND id = ANY($2::int[])`, [
-      id,
-      input.removeImageIds,
-    ]);
+    const { rows } = await db.query<{ url: string }>(
+      `DELETE FROM post_images WHERE post_id = $1 AND id = ANY($2::int[]) RETURNING url`,
+      [id, input.removeImageIds],
+    );
+    dropped.push(...rows.map((r) => r.url));
   }
 
   // Drop sections the editor removed; their images cascade away with them.
   // Everything still present keeps its id (and thus its images) through the edit.
   const keepIds = input.blocks.map((b) => b.id).filter((x): x is number => x !== null);
-  if (keepIds.length > 0) {
-    await db.query(`DELETE FROM post_blocks WHERE post_id = $1 AND id <> ALL($2::int[])`, [
-      id,
-      keepIds,
-    ]);
-  } else {
-    await db.query(`DELETE FROM post_blocks WHERE post_id = $1`, [id]);
-  }
+  const { rows: orphaned } = await db.query<{ url: string }>(
+    `SELECT i.url FROM post_images i JOIN post_blocks b ON b.id = i.block_id
+     WHERE b.post_id = $1 AND b.id <> ALL($2::int[])`,
+    [id, keepIds],
+  );
+  dropped.push(...orphaned.map((r) => r.url));
+  await db.query(`DELETE FROM post_blocks WHERE post_id = $1 AND id <> ALL($2::int[])`, [
+    id,
+    keepIds,
+  ]);
 
   // Upsert each surviving/new section in display order, then append its uploads.
   for (let i = 0; i < input.blocks.length; i++) {
@@ -448,6 +464,13 @@ async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promi
   await appendImages(db, id, null, input.newCover);
 
   // PDF: replace if a new one was uploaded, else clear if removed, else keep.
+  if (input.newPdfUrl || input.removePdf) {
+    const { rows } = await db.query<{ pdf_url: string | null }>(
+      `SELECT pdf_url FROM posts WHERE id = $1`,
+      [id],
+    );
+    if (rows[0]?.pdf_url) dropped.push(rows[0].pdf_url);
+  }
   if (input.newPdfUrl) {
     await db.query(`UPDATE posts SET pdf_url = $2 WHERE id = $1`, [id, input.newPdfUrl]);
   } else if (input.removePdf) {
@@ -473,6 +496,7 @@ async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promi
       i,
     ]);
   }
+  return dropped;
 }
 
 /* --------------------------------- Polls -------------------------------- */

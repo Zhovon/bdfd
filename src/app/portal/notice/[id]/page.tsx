@@ -8,8 +8,8 @@ import { postTotals } from "@/lib/payments";
 import { categoryMeta } from "@/lib/site";
 import { getDict } from "@/lib/i18n";
 
-const fmt = (d: Date) =>
-  new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(d));
+const fmt = (d: Date, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "2-digit", month: "long", year: "numeric" }).format(new Date(d));
 
 export default async function NoticePage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
@@ -44,7 +44,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
         >
           {board?.label ?? post.category}
         </span>
-        <span className="log-label text-stone">{fmt(post.created_at)}</span>
+        <span className="log-label text-stone">{fmt(post.created_at, t.intl)}</span>
       </div>
 
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight text-field sm:text-5xl">

@@ -91,7 +91,7 @@ export default function PostMedia({
     <div className="mt-4">
       <div className="relative overflow-hidden rounded-xl border border-line">
         {mainImage ? (
-          <button type="button" onClick={() => show(0)} className="block w-full" aria-label="View photo">
+          <button type="button" onClick={() => show(0)} className="block w-full" aria-label={t.a11y.viewPhoto}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImage}
@@ -104,7 +104,7 @@ export default function PostMedia({
             type="button"
             onClick={() => show(0)}
             className="flex aspect-[16/9] w-full items-center justify-center bg-field text-husk"
-            aria-label="Play video"
+            aria-label={t.a11y.playVideo}
           >
             <PlayIcon />
           </button>
@@ -154,7 +154,7 @@ export default function PostMedia({
                 <button
                   type="button"
                   onClick={prev}
-                  aria-label="Previous"
+                  aria-label={t.a11y.previous}
                   className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-husk/30 text-husk transition-colors hover:bg-husk hover:text-field"
                 >
                   ‹
@@ -165,7 +165,7 @@ export default function PostMedia({
                 <button
                   type="button"
                   onClick={next}
-                  aria-label="Next"
+                  aria-label={t.a11y.next}
                   className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-husk/30 text-husk transition-colors hover:bg-husk hover:text-field"
                 >
                   ›

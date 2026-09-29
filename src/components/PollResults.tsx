@@ -1,15 +1,18 @@
 import type { PollResult } from "@/lib/content";
+import { getDict } from "@/lib/i18n";
 
-const fmt = (d: Date) =>
-  new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
+const fmt = (d: Date, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
 
 /** Read-only results for a closed poll, highlighting the viewer's own pick. */
-export default function PollResults({ poll, myVote }: { poll: PollResult; myVote: number | null }) {
+export default async function PollResults({ poll, myVote }: { poll: PollResult; myVote: number | null }) {
+  const dict = await getDict();
+  const t = dict.poll;
   return (
     <div className="rounded-lg border border-line p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="font-semibold text-field">{poll.question}</p>
-        <span className="log-label shrink-0 text-stone">closed · {fmt(poll.created_at)}</span>
+        <span className="log-label shrink-0 text-stone">{t.closedOn} · {fmt(poll.created_at, dict.intl)}</span>
       </div>
       <ul className="mt-4 grid gap-2.5">
         {poll.options.map((o) => {
@@ -30,7 +33,9 @@ export default function PollResults({ poll, myVote }: { poll: PollResult; myVote
           );
         })}
       </ul>
-      <p className="log-label mt-3">{poll.totalVotes} vote{poll.totalVotes === 1 ? "" : "s"}</p>
+      <p className="log-label mt-3">
+        {poll.totalVotes} {poll.totalVotes === 1 ? t.vote : t.votes}
+      </p>
     </div>
   );
 }

@@ -1,19 +1,18 @@
 import { listPaymentMethods } from "@/lib/payments";
 import { requireAdmin } from "@/lib/session";
 import { savePaymentMethod } from "../actions";
+import { getDict } from "@/lib/i18n";
 
 export default async function AdminPayments() {
   await requireAdmin(); // admin-only; moderators redirected to /admin/content
-  const methods = await listPaymentMethods(false);
+  const [methods, dict] = await Promise.all([listPaymentMethods(false), getDict()]);
+  const t = dict.adminUi;
   return (
     <div>
       <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-        Receiving accounts
+        {t.accountsTitle}
       </h2>
-      <p className="mt-2 max-w-2xl text-stone">
-        The mobile-banking and bank accounts shown to members on every payment page. Update the
-        account numbers and instructions here.
-      </p>
+      <p className="mt-2 max-w-2xl text-stone">{t.accountsIntro}</p>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
         {methods.map((m) => (
@@ -27,35 +26,38 @@ export default async function AdminPayments() {
               <span className="log-label text-brand">{m.kind}</span>
               <label className="flex items-center gap-2 text-sm text-stone">
                 <input type="checkbox" name="active" defaultChecked={m.active} className="h-4 w-4 accent-[var(--brand)]" />
-                Active
+                {t.active}
               </label>
             </div>
             <label>
-              <span className="log-label text-field">Label</span>
+              <span className="log-label text-field">{t.label}</span>
               <input
                 name="label"
+                required
                 defaultValue={m.label}
                 className="mt-1 w-full rounded border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand"
               />
             </label>
             <label>
-              <span className="log-label text-field">Account name</span>
+              <span className="log-label text-field">{t.accountName}</span>
               <input
                 name="account_name"
+                required
                 defaultValue={m.account_name}
                 className="mt-1 w-full rounded border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand"
               />
             </label>
             <label>
-              <span className="log-label text-field">Account / number</span>
+              <span className="log-label text-field">{t.accountNumber}</span>
               <input
                 name="account_number"
+                required
                 defaultValue={m.account_number}
                 className="mt-1 w-full rounded border border-line bg-husk px-3 py-2 font-[family-name:var(--font-mono)] text-field outline-none focus:border-brand"
               />
             </label>
             <label>
-              <span className="log-label text-field">Instructions</span>
+              <span className="log-label text-field">{t.instructions}</span>
               <textarea
                 name="instructions"
                 defaultValue={m.instructions ?? ""}
@@ -64,7 +66,7 @@ export default async function AdminPayments() {
               />
             </label>
             <button className="justify-self-start rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-husk transition-transform hover:-translate-y-0.5">
-              Save
+              {t.save}
             </button>
           </form>
         ))}

@@ -1,15 +1,17 @@
 import ProfileForm from "@/components/ProfileForm";
 import { requireUser } from "@/lib/session";
+import { getDict } from "@/lib/i18n";
 
 export default async function ProfilePage() {
   const user = await requireUser();
+  const t = (await getDict()).profile;
   return (
     <div className="max-w-2xl">
-      <p className="log-label text-brand">Account</p>
+      <p className="log-label text-brand">{t.kicker}</p>
       <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
-        My profile
+        {t.title}
       </h1>
-      <p className="mt-2 text-stone">Keep your contact details current and manage your blood-donor listing.</p>
+      <p className="mt-2 text-stone">{t.intro}</p>
       <div className="mt-8">
         <ProfileForm
           user={{

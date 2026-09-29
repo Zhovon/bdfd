@@ -3,6 +3,7 @@ import ModuleHeader from "@/components/ModuleHeader";
 import { requireUser } from "@/lib/session";
 import { listBloodDonors } from "@/lib/db";
 import { getModule, BLOOD_GROUPS } from "@/lib/site";
+import { getDict } from "@/lib/i18n";
 
 const mod = getModule("blood")!;
 
@@ -14,15 +15,16 @@ export default async function BloodPage({
   await requireUser();
   const { group } = await searchParams;
   const active = group && BLOOD_GROUPS.includes(group) ? group : undefined;
-  const donors = await listBloodDonors(active);
+  const [donors, dict] = await Promise.all([listBloodDonors(active), getDict()]);
+  const t = dict.blood;
 
   return (
     <div>
       <ModuleHeader mod={mod}>
         <p className="mt-3 max-w-2xl text-sm text-stone">
-          Filter by group and call directly. Add yourself from{" "}
+          {t.intro}{" "}
           <Link href="/portal/profile" className="font-semibold text-brand hover:underline">
-            your profile
+            {t.yourProfile}
           </Link>
           .
         </p>
@@ -36,7 +38,7 @@ export default async function BloodPage({
             !active ? "border-field bg-field text-husk" : "border-line text-field hover:border-field/50"
           }`}
         >
-          All
+          {t.all}
         </Link>
         {BLOOD_GROUPS.map((g) => (
           <Link
@@ -56,7 +58,7 @@ export default async function BloodPage({
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-line bg-husk-deep">
-              {["Name", "Group", "Mobile", "Posting"].map((h) => (
+              {[t.name, t.group, t.mobile, t.posting].map((h) => (
                 <th key={h} className="log-label px-4 py-3 font-normal">
                   {h}
                 </th>
@@ -67,7 +69,7 @@ export default async function BloodPage({
             {donors.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-4 py-10 text-center text-stone">
-                  No donors listed{active ? ` for ${active}` : ""} yet.
+                  {active ? t.noDonorsFor : t.noDonors}
                 </td>
               </tr>
             ) : (

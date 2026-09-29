@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
 import { acceptsPayment, castVote, getPost } from "@/lib/content";
-import { createDonation, type ContributionKind } from "@/lib/payments";
+import { createDonation, transactionRefTaken, type ContributionKind } from "@/lib/payments";
 import { parseId, updateProfile } from "@/lib/db";
-import { saveUpload } from "@/lib/uploads";
+import { saveUpload, deleteUploads, UploadError } from "@/lib/uploads";
+import { getDict } from "@/lib/i18n";
 import { markAllRead } from "@/lib/notifications";
 
 const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim() : "");
@@ -34,16 +35,17 @@ export type DonationState = { ok: boolean; message: string } | null;
 
 export async function reportDonation(_prev: DonationState, formData: FormData): Promise<DonationState> {
   const user = await requireUser();
+  const m = (await getDict()).msg;
 
   // Every payment is made against a post; the post is the source of truth for
   // what kind of payment this is and — for a tour — how much it costs.
   const postId = parseId(formData.get("postId"));
-  if (!postId) return { ok: false, message: "We couldn't tell which notice this payment is for." };
+  if (!postId) return { ok: false, message: m.unknownNotice };
   const post = await getPost(postId);
   if (!post || !acceptsPayment(post))
-    return { ok: false, message: "This notice isn't accepting payments." };
+    return { ok: false, message: m.notAccepting };
   if (!post.paymentOpen)
-    return { ok: false, message: "Payments for this notice are now closed." };
+    return { ok: false, message: m.paymentsClosed };
 
   const kind: ContributionKind = post.paymentMode === "participation" ? "participation" : "donation";
   const method = str(formData.get("method"));
@@ -55,9 +57,11 @@ export async function reportDonation(_prev: DonationState, formData: FormData): 
   const amount = kind === "participation" ? post.feeAmount ?? 0 : Number(str(formData.get("amount")));
 
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000)
-    return { ok: false, message: "Enter a valid amount." };
-  if (!method) return { ok: false, message: "Choose how you paid." };
-  if (!transactionRef) return { ok: false, message: "Enter the transaction ID / reference." };
+    return { ok: false, message: m.enterAmount };
+  if (!method) return { ok: false, message: m.chooseMethod };
+  if (!transactionRef) return { ok: false, message: m.enterRef };
+  if (await transactionRefTaken(transactionRef))
+    return { ok: false, message: m.refTaken };
 
   await createDonation({
     userId: user.id,
@@ -71,11 +75,7 @@ export async function reportDonation(_prev: DonationState, formData: FormData): 
   });
   revalidatePath(`/portal/notice/${postId}`);
   revalidatePath(`/portal/${post.category}`);
-  const thanks =
-    kind === "participation"
-      ? "Thank you — your participation payment is recorded and awaiting verification by the administration."
-      : "Thank you — your donation is recorded and awaiting verification by the administration.";
-  return { ok: true, message: thanks };
+  return { ok: true, message: kind === "participation" ? m.thanksTour : m.thanksDonation };
 }
 
 /* -------------------------------- Profile ------------------------------- */
@@ -84,23 +84,31 @@ export type ProfileState = { ok: boolean; message: string } | null;
 
 export async function updateProfileAction(_prev: ProfileState, formData: FormData): Promise<ProfileState> {
   const user = await requireUser();
+  const m = (await getDict()).msg;
   const mobile = str(formData.get("mobile"));
   const designation = str(formData.get("designation"));
   const posting = str(formData.get("posting"));
   const bloodGroup = str(formData.get("bloodGroup")) || null;
   const bloodAvailable = formData.get("bloodAvailable") === "on";
 
-  if (!/^[0-9+\-\s]{6,20}$/.test(mobile)) return { ok: false, message: "Enter a valid mobile number." };
-  if (!designation || !posting) return { ok: false, message: "Designation and posting are required." };
+  if (!/^[0-9+\-\s]{6,20}$/.test(mobile)) return { ok: false, message: m.enterMobile };
+  if (!designation || !posting) return { ok: false, message: m.designationPosting };
 
   let avatarUrl: string | null = null;
   try {
     avatarUrl = await saveUpload(formData.get("avatar"), `u${user.id}-${Date.now()}`);
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : "Couldn't upload that photo." };
+    return { ok: false, message: err instanceof UploadError ? m[err.code] : m.photoFailed };
   }
 
-  await updateProfile(user.id, { mobile, designation, posting, bloodGroup, bloodAvailable, avatarUrl });
+  try {
+    await updateProfile(user.id, { mobile, designation, posting, bloodGroup, bloodAvailable, avatarUrl });
+  } catch (err) {
+    await deleteUploads([avatarUrl]);
+    throw err;
+  }
+  // A new photo replaces the old one — remove the old file.
+  if (avatarUrl && user.avatar_url) await deleteUploads([user.avatar_url]);
   revalidatePath("/portal/profile");
-  return { ok: true, message: "Profile updated." };
+  return { ok: true, message: m.profileSaved };
 }

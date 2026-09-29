@@ -4,7 +4,9 @@ import SiteFooter from "@/components/SiteFooter";
 import LoginForm from "@/components/LoginForm";
 import { getDict } from "@/lib/i18n";
 
-export const metadata: Metadata = { title: "Log in" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDict()).pageTitles.login };
+}
 
 export default async function LoginPage({
   searchParams,

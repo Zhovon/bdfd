@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateProfileAction, type ProfileState } from "@/app/portal/actions";
 import { BLOOD_GROUPS } from "@/lib/site";
+import { useI18n } from "@/components/I18nProvider";
 
 type Props = {
   user: {
@@ -20,6 +21,7 @@ type Props = {
 
 export default function ProfileForm({ user }: Props) {
   const [state, formAction, pending] = useActionState<ProfileState, FormData>(updateProfileAction, null);
+  const t = useI18n().t.profile;
 
   return (
     <form action={formAction} className="grid gap-6">
@@ -31,26 +33,26 @@ export default function ProfileForm({ user }: Props) {
           className="h-16 w-16 rounded-full border border-line object-cover"
         />
         <label className="text-sm">
-          <span className="log-label text-field">Profile photo</span>
+          <span className="log-label text-field">{t.photo}</span>
           <input name="avatar" type="file" accept="image/*" className="mt-2 block text-sm text-stone" />
         </label>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
-        <ReadOnly label="Full name" value={user.full_name} />
-        <ReadOnly label="Official email" value={user.official_email} />
-        <ReadOnly label="Govt PDS / Service ID" value={user.service_id} />
+        <ReadOnly label={t.fullName} value={user.full_name} />
+        <ReadOnly label={t.email} value={user.official_email} />
+        <ReadOnly label={t.serviceId} value={user.service_id} />
 
-        <Field name="mobile" label="Mobile number" defaultValue={user.mobile} />
-        <Field name="designation" label="Designation" defaultValue={user.designation} />
-        <Field name="posting" label="Present posting" defaultValue={user.posting} full />
+        <Field name="mobile" label={t.mobile} defaultValue={user.mobile} />
+        <Field name="designation" label={t.designation} defaultValue={user.designation} />
+        <Field name="posting" label={t.posting} defaultValue={user.posting} full />
       </div>
 
       <fieldset className="rounded-lg border border-line p-5">
-        <legend className="log-label px-2 text-brand">Blood donation</legend>
+        <legend className="log-label px-2 text-brand">{t.bloodDonation}</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <label>
-            <span className="log-label text-field">Blood group</span>
+            <span className="log-label text-field">{t.bloodGroup}</span>
             <select
               name="bloodGroup"
               defaultValue={user.blood_group ?? ""}
@@ -71,7 +73,7 @@ export default function ProfileForm({ user }: Props) {
               defaultChecked={user.blood_available}
               className="h-4 w-4 accent-[var(--brand)]"
             />
-            <span className="text-field">List me in the emergency blood directory</span>
+            <span className="text-field">{t.listMe}</span>
           </label>
         </div>
       </fieldset>
@@ -82,7 +84,7 @@ export default function ProfileForm({ user }: Props) {
           disabled={pending}
           className="rounded-full bg-brand px-8 py-3 font-semibold text-husk transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {pending ? "Saving…" : "Save changes"}
+          {pending ? t.saving : t.save}
         </button>
         {state && (
           <span className={`text-sm ${state.ok ? "text-brand" : "text-grain"}`}>{state.message}</span>

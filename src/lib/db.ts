@@ -79,7 +79,7 @@ let schemaReady: Promise<void> | null = null;
 
 // Bump when the DDL below changes so the next deploy re-runs the migration once.
 // Between changes, cold serverless instances skip the ~20 DDL round-trips.
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
@@ -92,212 +92,19 @@ export function ensureSchema(): Promise<void> {
       // the whole migration when the schema is already at the current version —
       // two cheap queries instead of ~20 DDL round-trips to the database.
       await pool.query(`CREATE TABLE IF NOT EXISTS schema_meta (version INTEGER NOT NULL)`);
-      const meta = await pool.query<{ version: number }>(`SELECT version FROM schema_meta LIMIT 1`);
-      if ((meta.rows[0]?.version ?? 0) >= SCHEMA_VERSION) return;
+      if ((await schemaVersion(pool)) >= SCHEMA_VERSION) return;
 
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id             SERIAL PRIMARY KEY,
-          full_name      TEXT NOT NULL,
-          official_email TEXT NOT NULL UNIQUE,
-          mobile         TEXT NOT NULL,
-          service_id     TEXT NOT NULL,
-          designation    TEXT NOT NULL,
-          posting        TEXT NOT NULL,
-          password_hash  TEXT NOT NULL,
-          role           TEXT NOT NULL DEFAULT 'member',
-          status         TEXT NOT NULL DEFAULT 'pending',
-          avatar_url     TEXT,
-          blood_group    TEXT,
-          blood_available BOOLEAN NOT NULL DEFAULT false,
-          created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-          approved_at    TIMESTAMPTZ
-        )
-      `);
-
-      // Migrate existing databases created before these columns existed.
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT`);
-      await pool.query(
-        `ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_available BOOLEAN NOT NULL DEFAULT false`,
-      );
-      // Bumped on password change/reset: invalidates every session and reset link.
-      await pool.query(
-        `ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0`,
-      );
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS posts (
-          id         SERIAL PRIMARY KEY,
-          category   TEXT NOT NULL,               -- travel | welfare | condolence | election
-          title      TEXT NOT NULL,
-          body       TEXT NOT NULL,
-          image_url  TEXT,
-          author_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-      `);
-
-      // Blog-style posts: a short excerpt for cards + ordered content sections.
-      await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS excerpt TEXT`);
-      // A downloadable PDF (the detailed programme) rendered after the body text.
-      await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
-
-      // A post can carry a payment intent:
-      //   none          — informational only (default)
-      //   participation — a fixed fee to join (e.g. a tour); fee_amount is set
-      //   donation      — an open contribution; the payer chooses the amount
-      // payment_open lets an admin close the button (tour filled / deadline passed).
-      await pool.query(
-        `ALTER TABLE posts ADD COLUMN IF NOT EXISTS payment_mode TEXT NOT NULL DEFAULT 'none'`,
-      );
-      await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS fee_amount NUMERIC(12,2)`);
-      await pool.query(
-        `ALTER TABLE posts ADD COLUMN IF NOT EXISTS payment_open BOOLEAN NOT NULL DEFAULT true`,
-      );
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS post_blocks (
-          id         SERIAL PRIMARY KEY,
-          post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-          heading    TEXT,
-          body       TEXT NOT NULL DEFAULT '',
-          sort_order INTEGER NOT NULL DEFAULT 0
-        )
-      `);
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS post_blocks_post_idx ON post_blocks(post_id, sort_order)`,
-      );
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS post_images (
-          id         SERIAL PRIMARY KEY,
-          post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-          url        TEXT NOT NULL,
-          sort_order INTEGER NOT NULL DEFAULT 0
-        )
-      `);
-      // Images can belong to a section (block_id) or to the post cover (null).
-      await pool.query(
-        `ALTER TABLE post_images ADD COLUMN IF NOT EXISTS block_id INTEGER REFERENCES post_blocks(id) ON DELETE CASCADE`,
-      );
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS post_images_post_idx ON post_images(post_id, sort_order)`,
-      );
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS post_images_block_idx ON post_images(block_id, sort_order)`,
-      );
-
-      // External video links (YouTube/Vimeo/Facebook) shown in the post gallery.
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS post_videos (
-          id         SERIAL PRIMARY KEY,
-          post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-          url        TEXT NOT NULL,
-          sort_order INTEGER NOT NULL DEFAULT 0
-        )
-      `);
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS post_videos_post_idx ON post_videos(post_id, sort_order)`,
-      );
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS polls (
-          id         SERIAL PRIMARY KEY,
-          question   TEXT NOT NULL,
-          active     BOOLEAN NOT NULL DEFAULT true,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-      `);
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS poll_options (
-          id      SERIAL PRIMARY KEY,
-          poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
-          label   TEXT NOT NULL
-        )
-      `);
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS poll_votes (
-          id        SERIAL PRIMARY KEY,
-          poll_id   INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
-          option_id INTEGER NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
-          user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-          UNIQUE (poll_id, user_id)
-        )
-      `);
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS payment_methods (
-          id          SERIAL PRIMARY KEY,
-          kind        TEXT NOT NULL,              -- bkash | nagad | rocket | bank | other
-          label       TEXT NOT NULL,
-          account_name TEXT NOT NULL,
-          account_number TEXT NOT NULL,
-          instructions TEXT,
-          sort_order  INTEGER NOT NULL DEFAULT 0,
-          active      BOOLEAN NOT NULL DEFAULT true
-        )
-      `);
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS donations (
-          id             SERIAL PRIMARY KEY,
-          user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
-          donor_name     TEXT NOT NULL,
-          amount         NUMERIC(12,2) NOT NULL,
-          method         TEXT NOT NULL,
-          transaction_ref TEXT NOT NULL,
-          note           TEXT,
-          status         TEXT NOT NULL DEFAULT 'reported', -- reported | verified | rejected
-          created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-      `);
-
-      // Contributions are now tied to the post they were made against, and carry
-      // a kind: 'donation' (open welfare giving) or 'participation' (a tour fee).
-      await pool.query(
-        `ALTER TABLE donations ADD COLUMN IF NOT EXISTS post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL`,
-      );
-      await pool.query(
-        `ALTER TABLE donations ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'donation'`,
-      );
-      // Gateway-ready: a real payment provider (SSLCommerz/bKash PGW) fills these
-      // and sets status='verified' automatically; unused while payment is manual.
-      await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS provider TEXT`);
-      await pool.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS gateway_ref TEXT`);
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS donations_post_idx ON donations(post_id)`,
-      );
-
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS notifications (
-          id         SERIAL PRIMARY KEY,
-          user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          type       TEXT NOT NULL,   -- notice | donation | account
-          title      TEXT NOT NULL,
-          body       TEXT,
-          link       TEXT,
-          read       BOOLEAN NOT NULL DEFAULT false,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-      `);
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, read)`,
-      );
-
-      // Only Travel & Tourism posts may carry a payment; clear any older ones.
-      await pool.query(
-        `UPDATE posts SET payment_mode = 'none', fee_amount = NULL
-         WHERE category <> 'travel' AND payment_mode <> 'none'`,
-      );
-
-      await ensureAdmin();
-      await seedPaymentMethods();
-      await seedContent();
-
-      // Record the version so later cold starts take the fast path above.
-      await pool.query(`DELETE FROM schema_meta`);
-      await pool.query(`INSERT INTO schema_meta (version) VALUES ($1)`, [SCHEMA_VERSION]);
+      // Several instances can cold-start together: take a session-level advisory
+      // lock so only one migrates, and re-check once the lock is ours.
+      const db = await pool.connect();
+      try {
+        await db.query(`SELECT pg_advisory_lock($1)`, [SCHEMA_LOCK]);
+        if ((await schemaVersion(db)) >= SCHEMA_VERSION) return;
+        await migrate(db);
+      } finally {
+        await db.query(`SELECT pg_advisory_unlock($1)`, [SCHEMA_LOCK]).catch(() => {});
+        db.release();
+      }
     })().catch((err) => {
       schemaReady = null;
       throw err;
@@ -306,14 +113,246 @@ export function ensureSchema(): Promise<void> {
   return schemaReady;
 }
 
-async function ensureAdmin(): Promise<void> {
+const SCHEMA_LOCK = 72_415_001; // arbitrary app-wide advisory-lock id
+
+async function schemaVersion(db: Queryable): Promise<number> {
+  const meta = await db.query<{ version: number }>(`SELECT version FROM schema_meta LIMIT 1`);
+  return meta.rows[0]?.version ?? 0;
+}
+
+type Queryable = Pick<PoolClient, "query">;
+
+/**
+ * Create every table and seed defaults. For a prototype this stands in for a
+ * migration tool; each statement is idempotent so it is safe to re-run.
+ */
+async function migrate(db: Queryable): Promise<void> {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id             SERIAL PRIMARY KEY,
+      full_name      TEXT NOT NULL,
+      official_email TEXT NOT NULL UNIQUE,
+      mobile         TEXT NOT NULL,
+      service_id     TEXT NOT NULL,
+      designation    TEXT NOT NULL,
+      posting        TEXT NOT NULL,
+      password_hash  TEXT NOT NULL,
+      role           TEXT NOT NULL DEFAULT 'member',
+      status         TEXT NOT NULL DEFAULT 'pending',
+      avatar_url     TEXT,
+      blood_group    TEXT,
+      blood_available BOOLEAN NOT NULL DEFAULT false,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+      approved_at    TIMESTAMPTZ
+    )
+  `);
+
+  // Migrate existing databases created before these columns existed.
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`);
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT`);
+  await db.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_available BOOLEAN NOT NULL DEFAULT false`,
+  );
+  // Bumped on password change/reset: invalidates every session and reset link.
+  await db.query(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0`,
+  );
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS posts (
+      id         SERIAL PRIMARY KEY,
+      category   TEXT NOT NULL,               -- travel | welfare | condolence | election
+      title      TEXT NOT NULL,
+      body       TEXT NOT NULL,
+      image_url  TEXT,
+      author_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Blog-style posts: a short excerpt for cards + ordered content sections.
+  await db.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS excerpt TEXT`);
+  // A downloadable PDF (the detailed programme) rendered after the body text.
+  await db.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
+
+  // A post can carry a payment intent:
+  //   none          — informational only (default)
+  //   participation — a fixed fee to join (e.g. a tour); fee_amount is set
+  //   donation      — an open contribution; the payer chooses the amount
+  // payment_open lets an admin close the button (tour filled / deadline passed).
+  await db.query(
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS payment_mode TEXT NOT NULL DEFAULT 'none'`,
+  );
+  await db.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS fee_amount NUMERIC(12,2)`);
+  await db.query(
+    `ALTER TABLE posts ADD COLUMN IF NOT EXISTS payment_open BOOLEAN NOT NULL DEFAULT true`,
+  );
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS post_blocks (
+      id         SERIAL PRIMARY KEY,
+      post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      heading    TEXT,
+      body       TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS post_blocks_post_idx ON post_blocks(post_id, sort_order)`,
+  );
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS post_images (
+      id         SERIAL PRIMARY KEY,
+      post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      url        TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  // Images can belong to a section (block_id) or to the post cover (null).
+  await db.query(
+    `ALTER TABLE post_images ADD COLUMN IF NOT EXISTS block_id INTEGER REFERENCES post_blocks(id) ON DELETE CASCADE`,
+  );
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS post_images_post_idx ON post_images(post_id, sort_order)`,
+  );
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS post_images_block_idx ON post_images(block_id, sort_order)`,
+  );
+
+  // External video links (YouTube/Vimeo/Facebook) shown in the post gallery.
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS post_videos (
+      id         SERIAL PRIMARY KEY,
+      post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      url        TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS post_videos_post_idx ON post_videos(post_id, sort_order)`,
+  );
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS polls (
+      id         SERIAL PRIMARY KEY,
+      question   TEXT NOT NULL,
+      active     BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS poll_options (
+      id      SERIAL PRIMARY KEY,
+      poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+      label   TEXT NOT NULL
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS poll_votes (
+      id        SERIAL PRIMARY KEY,
+      poll_id   INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+      option_id INTEGER NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
+      user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (poll_id, user_id)
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS payment_methods (
+      id          SERIAL PRIMARY KEY,
+      kind        TEXT NOT NULL,              -- bkash | nagad | rocket | bank | other
+      label       TEXT NOT NULL,
+      account_name TEXT NOT NULL,
+      account_number TEXT NOT NULL,
+      instructions TEXT,
+      sort_order  INTEGER NOT NULL DEFAULT 0,
+      active      BOOLEAN NOT NULL DEFAULT true
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS donations (
+      id             SERIAL PRIMARY KEY,
+      user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      donor_name     TEXT NOT NULL,
+      amount         NUMERIC(12,2) NOT NULL,
+      method         TEXT NOT NULL,
+      transaction_ref TEXT NOT NULL,
+      note           TEXT,
+      status         TEXT NOT NULL DEFAULT 'reported', -- reported | verified | rejected
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Contributions are now tied to the post they were made against, and carry
+  // a kind: 'donation' (open welfare giving) or 'participation' (a tour fee).
+  await db.query(
+    `ALTER TABLE donations ADD COLUMN IF NOT EXISTS post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL`,
+  );
+  await db.query(
+    `ALTER TABLE donations ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'donation'`,
+  );
+  // Gateway-ready: a real payment provider (SSLCommerz/bKash PGW) fills these
+  // and sets status='verified' automatically; unused while payment is manual.
+  await db.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS provider TEXT`);
+  await db.query(`ALTER TABLE donations ADD COLUMN IF NOT EXISTS gateway_ref TEXT`);
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS donations_post_idx ON donations(post_id)`,
+  );
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type       TEXT NOT NULL,   -- notice | donation | account
+      title      TEXT NOT NULL,
+      body       TEXT,
+      link       TEXT,
+      read       BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, read)`,
+  );
+
+  // Only Travel & Tourism posts may carry a payment; clear any older ones.
+  await db.query(
+    `UPDATE posts SET payment_mode = 'none', fee_amount = NULL
+     WHERE category <> 'travel' AND payment_mode <> 'none'`,
+  );
+
+  // Login / password-reset attempt counters (see lib/ratelimit.ts).
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key          TEXT PRIMARY KEY,
+      count        INTEGER NOT NULL,
+      window_start TIMESTAMPTZ NOT NULL
+    )
+  `);
+  // Duplicate transaction-reference lookups on payment reports.
+  await db.query(
+    `CREATE INDEX IF NOT EXISTS donations_txref_idx ON donations (lower(transaction_ref))`,
+  );
+
+  await ensureAdmin(db);
+  await seedPaymentMethods(db);
+  await seedContent(db);
+
+  // Record the version so later cold starts take the fast path above.
+  await db.query(`DELETE FROM schema_meta`);
+  await db.query(`INSERT INTO schema_meta (version) VALUES ($1)`, [SCHEMA_VERSION]);
+}
+
+async function ensureAdmin(db: Queryable): Promise<void> {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) return;
-  const { rowCount } = await pool.query("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1");
+  const { rowCount } = await db.query("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1");
   if (rowCount && rowCount > 0) return;
   const hash = await hashPassword(password);
-  await pool.query(
+  await db.query(
     `INSERT INTO users
        (full_name, official_email, mobile, service_id, designation, posting, password_hash, role, status, approved_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,'admin','approved', now())
@@ -322,8 +361,8 @@ async function ensureAdmin(): Promise<void> {
   );
 }
 
-async function seedPaymentMethods(): Promise<void> {
-  const { rowCount } = await pool.query("SELECT 1 FROM payment_methods LIMIT 1");
+async function seedPaymentMethods(db: Queryable): Promise<void> {
+  const { rowCount } = await db.query("SELECT 1 FROM payment_methods LIMIT 1");
   if (rowCount && rowCount > 0) return;
   const rows: [string, string, string, string, string, number][] = [
     ["bkash", "bKash (Send Money)", "Welfare Fund", "01700-000000", "Send Money to this number, then report your donation below with the TrxID.", 1],
@@ -332,7 +371,7 @@ async function seedPaymentMethods(): Promise<void> {
     ["bank", "Bank Transfer", "Officers Welfare Association", "1234 5678 9012", "Bank: Sonali Bank · Branch: Head Office · Routing: 200270015. Use your name as reference.", 4],
   ];
   for (const [kind, label, name, num, ins, order] of rows) {
-    await pool.query(
+    await db.query(
       `INSERT INTO payment_methods (kind, label, account_name, account_number, instructions, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6)`,
       [kind, label, name, num, ins, order],
@@ -340,8 +379,8 @@ async function seedPaymentMethods(): Promise<void> {
   }
 }
 
-async function seedContent(): Promise<void> {
-  const { rowCount } = await pool.query("SELECT 1 FROM posts LIMIT 1");
+async function seedContent(db: Queryable): Promise<void> {
+  const { rowCount } = await db.query("SELECT 1 FROM posts LIMIT 1");
   if (!rowCount) {
     // [category, title, body, payment_mode, fee_amount]
     const posts: [string, string, string, string, number | null][] = [
@@ -351,21 +390,21 @@ async function seedContent(): Promise<void> {
       ["association", "About the association", "This board carries official association information — the committee, general notices, and neutral election information such as the schedule, voter list and final list of candidates. No personal campaigning is hosted here.", "none", null],
     ];
     for (const [category, title, body, mode, fee] of posts) {
-      await pool.query(
+      await db.query(
         `INSERT INTO posts (category, title, body, payment_mode, fee_amount) VALUES ($1,$2,$3,$4,$5)`,
         [category, title, body, mode, fee],
       );
     }
   }
-  const { rowCount: pollCount } = await pool.query("SELECT 1 FROM polls LIMIT 1");
+  const { rowCount: pollCount } = await db.query("SELECT 1 FROM polls LIMIT 1");
   if (!pollCount) {
-    const { rows } = await pool.query<{ id: number }>(
+    const { rows } = await db.query<{ id: number }>(
       `INSERT INTO polls (question) VALUES ($1) RETURNING id`,
       ["Where should the next departmental tour be?"],
     );
     const pollId = rows[0].id;
     for (const label of ["Bandarban", "Sundarbans", "Sylhet tea gardens", "Cox's Bazar"]) {
-      await pool.query(`INSERT INTO poll_options (poll_id, label) VALUES ($1,$2)`, [pollId, label]);
+      await db.query(`INSERT INTO poll_options (poll_id, label) VALUES ($1,$2)`, [pollId, label]);
     }
   }
 }

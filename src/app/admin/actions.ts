@@ -26,7 +26,8 @@ import {
 import { getDonation, setDonationStatus, updatePaymentMethod, type DonationStatus } from "@/lib/payments";
 import { requireAdmin, requireStaff } from "@/lib/session";
 import { approvalEmail, rejectionEmail, sendMail } from "@/lib/mailer";
-import { saveUploads, savePdf } from "@/lib/uploads";
+import { saveUploads, savePdf, deleteUploads, UploadError } from "@/lib/uploads";
+import { getDict } from "@/lib/i18n";
 import { notifyUser, notifyApprovedMembers } from "@/lib/notifications";
 import { getModule } from "@/lib/site";
 
@@ -103,27 +104,37 @@ export type PostFormState = { ok: boolean; message: string } | null;
 
 export async function addPost(_prev: PostFormState, formData: FormData): Promise<PostFormState> {
   const staff = await requireStaff();
+  const m = (await getDict()).msg;
   const category = str(formData.get("category")) as PostCategory;
   const title = str(formData.get("title"));
   const excerpt = str(formData.get("excerpt"));
   if (!["travel", "welfare", "condolence", "association"].includes(category))
-    return { ok: false, message: "Choose a board." };
-  if (!title) return { ok: false, message: "Give the notice a title." };
+    return { ok: false, message: m.chooseBoard };
+  if (!title) return { ok: false, message: m.giveTitle };
 
   // Payment intent — only Travel & Tourism posts may carry a payment.
   const paymentMode = (category === "travel"
     ? str(formData.get("paymentMode")) || "none"
     : "none") as PaymentMode;
   if (!["none", "participation", "donation"].includes(paymentMode))
-    return { ok: false, message: "Choose a valid payment mode." };
+    return { ok: false, message: m.invalidMode };
   let feeAmount: number | null = null;
   if (paymentMode === "participation") {
     feeAmount = Number(str(formData.get("feeAmount")));
     if (!Number.isFinite(feeAmount) || feeAmount <= 0 || feeAmount > MAX_AMOUNT)
-      return { ok: false, message: "Enter a participation fee greater than zero." };
+      return { ok: false, message: m.feeRequired };
   }
 
   const stamp = Date.now();
+  // Optional programme PDF, rendered after the body. Saved first: it's the one
+  // upload that can reject the form, so nothing else is stored if it does.
+  let pdfUrl: string | null = null;
+  try {
+    pdfUrl = await savePdf(formData.get("pdf"), `post-${stamp}-doc`);
+  } catch (err) {
+    return { ok: false, message: err instanceof UploadError ? m[err.code] : m.pdfFailed };
+  }
+
   // Cover photos (the first is the main image; all appear in the gallery).
   const cover = await saveUploads(formData.getAll("cover"), `post-${stamp}-cover`);
 
@@ -132,14 +143,6 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     .split("\n")
     .map((v) => v.trim())
     .filter((v) => /^https?:\/\//i.test(v));
-
-  // Optional programme PDF, rendered after the body.
-  let pdfUrl: string | null = null;
-  try {
-    pdfUrl = await savePdf(formData.get("pdf"), `post-${stamp}-doc`);
-  } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : "Couldn't upload the PDF." };
-  }
 
   // Repeatable sections: block-heading-i / block-body-i / block-images-i.
   const blockCount = Math.min(Number(str(formData.get("blockCount"))) || 0, MAX_BLOCKS);
@@ -152,7 +155,14 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     blocks.push({ heading, body, images });
   }
 
-  await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, videos, pdfUrl, paymentMode, feeAmount });
+  try {
+    await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, videos, pdfUrl, paymentMode, feeAmount });
+  } catch (err) {
+    // Nothing was saved, so don't leave the uploaded files behind.
+    await deleteUploads([pdfUrl, ...cover, ...blocks.flatMap((b) => b.images)]);
+    console.error("addPost failed:", err);
+    return { ok: false, message: m.publishFailed };
+  }
 
   const mod = getModule(category);
   await notifyApprovedMembers(
@@ -161,35 +171,35 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   );
   revalidatePath("/admin/content");
   revalidatePath(`/portal/${category}`);
-  return { ok: true, message: "Notice published." };
+  return { ok: true, message: m.published };
 }
 
 export async function editPost(_prev: PostFormState, formData: FormData): Promise<PostFormState> {
   await requireStaff();
+  const m = (await getDict()).msg;
   const id = parseId(formData.get("id"));
-  if (!id || !(await getPost(id))) return { ok: false, message: "Unknown post." };
+  if (!id || !(await getPost(id))) return { ok: false, message: m.unknownPost };
 
   const category = str(formData.get("category")) as PostCategory;
   const title = str(formData.get("title"));
   const excerpt = str(formData.get("excerpt"));
   if (!["travel", "welfare", "condolence", "association"].includes(category))
-    return { ok: false, message: "Choose a board." };
-  if (!title) return { ok: false, message: "Give the notice a title." };
+    return { ok: false, message: m.chooseBoard };
+  if (!title) return { ok: false, message: m.giveTitle };
 
   const paymentMode = (category === "travel"
     ? str(formData.get("paymentMode")) || "none"
     : "none") as PaymentMode;
   if (!["none", "participation", "donation"].includes(paymentMode))
-    return { ok: false, message: "Choose a valid payment mode." };
+    return { ok: false, message: m.invalidMode };
   let feeAmount: number | null = null;
   if (paymentMode === "participation") {
     feeAmount = Number(str(formData.get("feeAmount")));
     if (!Number.isFinite(feeAmount) || feeAmount <= 0 || feeAmount > MAX_AMOUNT)
-      return { ok: false, message: "Enter a participation fee greater than zero." };
+      return { ok: false, message: m.feeRequired };
   }
 
   const stamp = Date.now();
-  const newCover = await saveUploads(formData.getAll("cover"), `post-${id}-${stamp}`);
 
   const videos = str(formData.get("videos"))
     .split("\n")
@@ -205,8 +215,9 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
   try {
     newPdfUrl = await savePdf(formData.get("pdf"), `post-${id}-${stamp}-doc`);
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : "Couldn't upload the PDF." };
+    return { ok: false, message: err instanceof UploadError ? m[err.code] : m.pdfFailed };
   }
+  const newCover = await saveUploads(formData.getAll("cover"), `post-${id}-${stamp}`);
 
   const blockCount = Math.min(Number(str(formData.get("blockCount"))) || 0, MAX_BLOCKS);
   const blocks: { id: number | null; heading: string; body: string; newImages: string[] }[] = [];
@@ -221,30 +232,40 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
     blocks.push({ id: blockId, heading, body, newImages });
   }
 
-  await updatePost(id, {
-    category,
-    title,
-    excerpt,
-    newCover,
-    removeImageIds,
-    blocks,
-    videos,
-    newPdfUrl,
-    removePdf,
-    paymentMode,
-    feeAmount,
-  });
+  let dropped: string[];
+  try {
+    dropped = await updatePost(id, {
+      category,
+      title,
+      excerpt,
+      newCover,
+      removeImageIds,
+      blocks,
+      videos,
+      newPdfUrl,
+      removePdf,
+      paymentMode,
+      feeAmount,
+    });
+  } catch (err) {
+    // The edit rolled back, so the files uploaded for it are unused.
+    await deleteUploads([newPdfUrl, ...newCover, ...blocks.flatMap((b) => b.newImages)]);
+    console.error("editPost failed:", err);
+    return { ok: false, message: m.saveFailed };
+  }
+  // Files the edit removed (ticked photos, dropped sections, a replaced PDF).
+  await deleteUploads(dropped);
 
   revalidatePath("/admin/content");
   revalidatePath(`/portal/${category}`);
   revalidatePath(`/portal/notice/${id}`);
-  return { ok: true, message: "Changes saved." };
+  return { ok: true, message: m.saved };
 }
 
 export async function removePost(formData: FormData) {
   await requireStaff();
   const id = parseId(formData.get("id"));
-  if (id) await deletePost(id);
+  if (id) await deleteUploads(await deletePost(id));
   revalidatePath("/admin/content");
 }
 

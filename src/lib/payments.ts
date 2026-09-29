@@ -82,6 +82,20 @@ export async function createDonation(d: {
   return rows[0].id;
 }
 
+/**
+ * Whether a transaction reference was already reported (and not rejected), so
+ * one real payment can't be claimed twice. Case-insensitive; rejected reports
+ * don't count, so a member can correct and resubmit.
+ */
+export async function transactionRefTaken(ref: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await pool.query(
+    `SELECT 1 FROM donations WHERE lower(transaction_ref) = lower($1) AND status <> 'rejected' LIMIT 1`,
+    [ref],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 export async function listDonations(status?: DonationStatus): Promise<Donation[]> {
   await ensureSchema();
   const base = `SELECT d.*, p.title AS post_title

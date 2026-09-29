@@ -1,8 +1,10 @@
 import { listDonations, donationTotals, type Donation } from "@/lib/payments";
 import { verifyDonation, rejectDonation } from "../actions";
+import ConfirmButton from "@/components/ConfirmButton";
+import { getDict } from "@/lib/i18n";
 
-const fmt = (d: Date) =>
-  new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
+const fmt = (d: Date, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
 const taka = (n: number | string) => `৳ ${Number(n).toLocaleString("en-BD")}`;
 
 const badge: Record<Donation["status"], string> = {
@@ -12,22 +14,25 @@ const badge: Record<Donation["status"], string> = {
 };
 
 export default async function AdminDonations() {
-  const [donations, totals] = await Promise.all([listDonations(), donationTotals()]);
+  const [donations, totals, dict] = await Promise.all([listDonations(), donationTotals(), getDict()]);
+  const t = dict.adminUi;
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-6">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Payments
+          {t.paymentsTitle}
         </h2>
-        <span className="log-label">Verified {taka(totals.verified)} · Awaiting {taka(totals.reported)}</span>
+        <span className="log-label">
+          {t.verifiedTotal} {taka(totals.verified)} · {t.awaitingTotal} {taka(totals.reported)}
+        </span>
       </div>
 
       <div className="mt-6 overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              {["Donor", "For", "Amount", "Method", "Reference", "Date", "Status", "Actions"].map((h) => (
+              {[t.colDonor, t.colFor, t.colAmount, t.colMethod, t.colReference, t.colDate, t.colStatus, t.colActions].map((h) => (
                 <th key={h} className="log-label whitespace-nowrap py-3 pr-4 font-normal">
                   {h}
                 </th>
@@ -38,7 +43,7 @@ export default async function AdminDonations() {
             {donations.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-10 text-center text-stone">
-                  No payments reported yet.
+                  {t.noPayments}
                 </td>
               </tr>
             ) : (
@@ -54,7 +59,7 @@ export default async function AdminDonations() {
                         d.kind === "participation" ? "bg-brand/10 text-brand" : "bg-grain/10 text-grain"
                       }`}
                     >
-                      {d.kind === "participation" ? "Tour fee" : "Donation"}
+                      {d.kind === "participation" ? t.tourFee : t.donation}
                     </span>
                     {d.post_title && <span className="mt-1 block text-stone">{d.post_title}</span>}
                   </td>
@@ -63,10 +68,10 @@ export default async function AdminDonations() {
                   <td className="py-3 pr-4 font-[family-name:var(--font-mono)] text-field/90">
                     {d.transaction_ref}
                   </td>
-                  <td className="whitespace-nowrap py-3 pr-4 text-stone">{fmt(d.created_at)}</td>
+                  <td className="whitespace-nowrap py-3 pr-4 text-stone">{fmt(d.created_at, dict.intl)}</td>
                   <td className="py-3 pr-4">
                     <span className={`log-label rounded-full px-2.5 py-1 ${badge[d.status]}`}>
-                      {d.status}
+                      {t.paymentStatus[d.status]}
                     </span>
                   </td>
                   <td className="py-3 pr-4">
@@ -74,13 +79,16 @@ export default async function AdminDonations() {
                       <div className="flex items-center gap-3">
                         <form action={verifyDonation}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="log-label text-brand hover:underline">Verify</button>
+                          <button className="log-label text-brand hover:underline">{t.verify}</button>
                         </form>
                         <form action={rejectDonation}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="log-label text-stone hover:text-grain hover:underline">
-                            Reject
-                          </button>
+                          <ConfirmButton
+                            message={t.confirmRejectPayment}
+                            className="log-label text-stone hover:text-grain hover:underline"
+                          >
+                            {t.reject}
+                          </ConfirmButton>
                         </form>
                       </div>
                     )}

@@ -3,8 +3,8 @@ import { acceptsPayment, type PostCard } from "@/lib/content";
 import { categoryMeta } from "@/lib/site";
 import { getDict, type Dict } from "@/lib/i18n";
 
-const fmtDay = (d: Date) => new Intl.DateTimeFormat("en-GB", { day: "2-digit" }).format(new Date(d));
-const fmtMon = (d: Date) => new Intl.DateTimeFormat("en-GB", { month: "short" }).format(new Date(d));
+const fmtDay = (d: Date, locale: string) => new Intl.DateTimeFormat(locale, { day: "2-digit" }).format(new Date(d));
+const fmtMon = (d: Date, locale: string) => new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(d));
 const isNew = (d: Date) => Date.now() - new Date(d).getTime() < 7 * 24 * 3600 * 1000;
 const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
 
@@ -111,7 +111,7 @@ export default async function PostBoard({
                   </span>
                 )}
                 <span className="log-label text-stone">
-                  {fmtDay(p.created_at)} {fmtMon(p.created_at)}
+                  {fmtDay(p.created_at, t.intl)} {fmtMon(p.created_at, t.intl)}
                 </span>
               </div>
               <h3 className="mt-1.5 font-[family-name:var(--font-display)] text-xl font-bold leading-snug text-field">

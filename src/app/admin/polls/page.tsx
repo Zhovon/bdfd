@@ -1,25 +1,26 @@
 import { listPolls } from "@/lib/content";
 import { addPoll, closePollAction, reopenPollAction, deletePollAction } from "../actions";
+import ConfirmButton from "@/components/ConfirmButton";
+import { getDict } from "@/lib/i18n";
 
-const fmt = (d: Date) =>
-  new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
+const fmt = (d: Date, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
 
 export default async function AdminPolls() {
-  const polls = await listPolls();
+  const [polls, dict] = await Promise.all([listPolls(), getDict()]);
+  const t = dict.adminUi;
 
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_1.3fr]">
       {/* Create */}
       <div>
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          New poll
+          {t.newPoll}
         </h2>
-        <p className="mt-2 text-sm text-stone">
-          Starting a new poll closes the current one. Closed polls and their results are kept below.
-        </p>
+        <p className="mt-2 text-sm text-stone">{t.newPollIntro}</p>
         <form action={addPoll} className="mt-5 grid gap-4">
           <label>
-            <span className="log-label text-field">Question</span>
+            <span className="log-label text-field">{t.question}</span>
             <input
               name="question"
               required
@@ -27,7 +28,7 @@ export default async function AdminPolls() {
             />
           </label>
           <label>
-            <span className="log-label text-field">Options — one per line</span>
+            <span className="log-label text-field">{t.options}</span>
             <textarea
               name="options"
               required
@@ -37,7 +38,7 @@ export default async function AdminPolls() {
             />
           </label>
           <button className="justify-self-start rounded-full bg-brand px-7 py-3 font-semibold text-husk transition-transform hover:-translate-y-0.5">
-            Create poll
+            {t.createPoll}
           </button>
         </form>
       </div>
@@ -45,10 +46,10 @@ export default async function AdminPolls() {
       {/* All polls, current + archive */}
       <div>
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Polls <span className="text-stone">({polls.length})</span>
+          {t.pollsTitle} <span className="text-stone">({polls.length})</span>
         </h2>
         {polls.length === 0 ? (
-          <p className="mt-4 text-stone">No polls yet.</p>
+          <p className="mt-4 text-stone">{t.noPolls}</p>
         ) : (
           <div className="mt-5 grid gap-4">
             {polls.map((poll) => (
@@ -61,9 +62,9 @@ export default async function AdminPolls() {
                           poll.active ? "bg-brand/10 text-brand" : "bg-stone/15 text-stone"
                         }`}
                       >
-                        {poll.active ? "open" : "closed"}
+                        {poll.active ? t.open : t.closed}
                       </span>
-                      <span className="log-label text-stone">{fmt(poll.created_at)}</span>
+                      <span className="log-label text-stone">{fmt(poll.created_at, dict.intl)}</span>
                     </div>
                     <p className="mt-2 font-semibold text-field">{poll.question}</p>
                   </div>
@@ -72,20 +73,23 @@ export default async function AdminPolls() {
                       <form action={closePollAction}>
                         <input type="hidden" name="id" value={poll.id} />
                         <button className="log-label text-stone hover:text-field hover:underline">
-                          Close
+                          {t.close}
                         </button>
                       </form>
                     ) : (
                       <form action={reopenPollAction}>
                         <input type="hidden" name="id" value={poll.id} />
-                        <button className="log-label text-brand hover:underline">Reopen</button>
+                        <button className="log-label text-brand hover:underline">{t.reopen}</button>
                       </form>
                     )}
                     <form action={deletePollAction}>
                       <input type="hidden" name="id" value={poll.id} />
-                      <button className="log-label text-stone hover:text-grain hover:underline">
-                        Delete
-                      </button>
+                      <ConfirmButton
+                        message={t.confirmDeletePoll}
+                        className="log-label text-stone hover:text-grain hover:underline"
+                      >
+                        {t.delete}
+                      </ConfirmButton>
                     </form>
                   </div>
                 </div>
@@ -108,7 +112,9 @@ export default async function AdminPolls() {
                     );
                   })}
                 </ul>
-                <p className="log-label mt-3">{poll.totalVotes} total votes</p>
+                <p className="log-label mt-3">
+                  {poll.totalVotes} {dict.poll.totalVotes}
+                </p>
               </div>
             ))}
           </div>

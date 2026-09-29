@@ -4,23 +4,26 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import RegisterForm from "@/components/RegisterForm";
 import { captchaSiteKey } from "@/lib/captcha";
+import { getDict } from "@/lib/i18n";
 
-export const metadata: Metadata = { title: "Register" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDict()).pageTitles.register };
+}
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const t = (await getDict()).register;
   return (
     <>
       <SiteHeader />
       <section className="mx-auto max-w-3xl px-5 py-16">
-        <p className="log-label text-brand">Membership request</p>
+        <p className="log-label text-brand">{t.kicker}</p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold text-field">
-          Register as an officer
+          {t.title}
         </h1>
         <p className="mt-4 max-w-xl text-stone">
-          Enter your service details. An administrator will verify them against official records and
-          approve your account — you&apos;ll get an email once access is granted. Already approved?{" "}
+          {t.intro}{" "}
           <Link href="/login" className="font-semibold text-brand underline-offset-2 hover:underline">
-            Log in
+            {t.logIn}
           </Link>
           .
         </p>
