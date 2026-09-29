@@ -93,7 +93,7 @@ Coolify UI → **Project → New → Database → PostgreSQL 16**.
 Coolify UI → **Project → New → Application → Private Repository**.
 1. Connect **GitHub** (install the Coolify GitHub App), pick **`Zhovon/bdfd`**, branch **`main`**.
 2. Build pack: **Nixpacks** (auto-detects Next.js). Port: **3000**.
-3. If the build picks the wrong Node, set env `NIXPACKS_NODE_VERSION=20`.
+3. The app needs Node 22 (`engines` in package.json, `.nvmrc`). If the build picks another version, set env `NIXPACKS_NODE_VERSION=22`.
 4. Add the environment variables below, then **Deploy**.
 
 ### Environment variables (Coolify → the app → Environment)
