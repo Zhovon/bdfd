@@ -51,11 +51,11 @@ export const en = {
     prototype: "prototype",
   },
   home: {
-    kicker: "Departmental officers only · members' portal",
+    kicker: "Directorate of Food · officers' & employees' portal",
     titleA: "One service.",
     titleB: "One community.",
     intro:
-      "A private welfare and community platform for the officers of the service — travel, mutual support, a blood directory and notices. Access opens to verified members once an administrator approves your registration.",
+      "An online communication platform for the officers and employees working at the Directorate of Food's establishments across the country.",
     goToMembers: "Go to members' area →",
     adminPanel: "Admin panel",
     login: "Log in",
