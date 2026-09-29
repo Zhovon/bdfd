@@ -1,17 +1,23 @@
 import PostBoard from "@/components/PostBoard";
+import Pagination from "@/components/Pagination";
 import PollCard from "@/components/PollCard";
 import PollResults from "@/components/PollResults";
 import ModuleHeader from "@/components/ModuleHeader";
 import { requireUser } from "@/lib/session";
-import { listPosts, getActivePoll, getUserVote, listClosedPolls, getUserVotes } from "@/lib/content";
+import { listPostsPaged, getActivePoll, getUserVote, listClosedPolls, getUserVotes } from "@/lib/content";
 import { getModule } from "@/lib/site";
 
 const mod = getModule("travel")!;
 
-export default async function TravelPage() {
+export default async function TravelPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const user = await requireUser();
-  const [posts, poll, closed] = await Promise.all([
-    listPosts("travel"),
+  const { page } = await searchParams;
+  const [postPage, poll, closed] = await Promise.all([
+    listPostsPaged("travel", Number(page) || 1),
     getActivePoll(),
     listClosedPolls(),
   ]);
@@ -32,8 +38,9 @@ export default async function TravelPage() {
         Tour programmes &amp; plans
       </h2>
       <div className="mt-4">
-        <PostBoard posts={posts} empty="No tour programmes posted yet." />
+        <PostBoard posts={postPage.items} empty="No tour programmes posted yet." />
       </div>
+      <Pagination page={postPage.page} pageCount={postPage.pageCount} basePath="/portal/travel" />
 
       {closed.length > 0 && (
         <>

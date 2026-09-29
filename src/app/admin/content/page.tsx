@@ -1,14 +1,20 @@
 import Link from "next/link";
-import { listAllPosts } from "@/lib/content";
+import { listAllPostsPaged } from "@/lib/content";
 import { removePost } from "../actions";
 import PostEditor from "@/components/PostEditor";
+import Pagination from "@/components/Pagination";
 import { categoryMeta } from "@/lib/site";
 
 const fmt = (d: Date) =>
   new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
 
-export default async function AdminContent() {
-  const posts = await listAllPosts();
+export default async function AdminContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page } = await searchParams;
+  const { items: posts, total, page: current, pageCount } = await listAllPostsPaged(Number(page) || 1);
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr]">
       {/* Create */}
@@ -28,7 +34,7 @@ export default async function AdminContent() {
       {/* List */}
       <div className="min-w-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Posted <span className="text-stone">({posts.length})</span>
+          Posted <span className="text-stone">({total})</span>
         </h2>
         <ul className="mt-5 grid gap-3">
           {posts.map((p) => {
@@ -81,6 +87,7 @@ export default async function AdminContent() {
             );
           })}
         </ul>
+        <Pagination page={current} pageCount={pageCount} basePath="/admin/content" />
       </div>
     </div>
   );

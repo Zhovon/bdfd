@@ -121,19 +121,66 @@ async function toCards(rows: PostRow[]): Promise<PostCard[]> {
   });
 }
 
-export async function listPosts(category: PostCategory): Promise<PostCard[]> {
+/** Notice cards per page on the board + admin lists. */
+export const POSTS_PER_PAGE = 9;
+
+/** A single windowed page of results plus the totals needed to draw controls. */
+export type Paged<T> = {
+  items: T[];
+  total: number; // matching rows across all pages
+  page: number; // the (clamped) 1-based page returned
+  pageCount: number; // total number of pages (>= 1)
+};
+
+/**
+ * One page of post cards. Runs a cheap COUNT first so the page is always
+ * clamped into range, then fetches only that window — never the whole table.
+ * `where` is a fixed internal clause (not user input); LIMIT/OFFSET are bound.
+ */
+async function pagePosts(where: string, params: unknown[], page: number): Promise<Paged<PostCard>> {
   await ensureSchema();
-  const { rows } = await pool.query<PostRow>(
-    `SELECT ${POST_COLS} FROM posts WHERE category = $1 ORDER BY created_at DESC, id DESC`,
-    [category],
+  const { rows: cnt } = await pool.query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total FROM posts ${where}`,
+    params,
   );
-  return toCards(rows);
+  const total = Number(cnt[0].total);
+  const pageCount = Math.max(1, Math.ceil(total / POSTS_PER_PAGE));
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  const offset = (current - 1) * POSTS_PER_PAGE;
+  const { rows } = await pool.query<PostRow>(
+    `SELECT ${POST_COLS} FROM posts ${where}
+     ORDER BY created_at DESC, id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, POSTS_PER_PAGE, offset],
+  );
+  return { items: await toCards(rows), total, page: current, pageCount };
 }
 
-export async function listAllPosts(): Promise<PostCard[]> {
+export function listPostsPaged(category: PostCategory, page: number): Promise<Paged<PostCard>> {
+  return pagePosts(`WHERE category = $1`, [category], page);
+}
+
+export function listAllPostsPaged(page: number): Promise<Paged<PostCard>> {
+  return pagePosts(``, [], page);
+}
+
+/** Total post count, optionally scoped to a board — for dashboard stat tiles. */
+export async function countPosts(category?: PostCategory): Promise<number> {
+  await ensureSchema();
+  const { rows } = category
+    ? await pool.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count FROM posts WHERE category = $1`,
+        [category],
+      )
+    : await pool.query<{ count: number }>(`SELECT COUNT(*)::int AS count FROM posts`);
+  return Number(rows[0].count);
+}
+
+/** The newest `limit` posts as cards — for the dashboard preview. */
+export async function latestPosts(limit: number): Promise<PostCard[]> {
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(
-    `SELECT ${POST_COLS} FROM posts ORDER BY created_at DESC, id DESC`,
+    `SELECT ${POST_COLS} FROM posts ORDER BY created_at DESC, id DESC LIMIT $1`,
+    [limit],
   );
   return toCards(rows);
 }

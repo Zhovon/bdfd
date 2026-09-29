@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/session";
-import { listAllPosts } from "@/lib/content";
+import { latestPosts, countPosts } from "@/lib/content";
 import { listBloodDonors } from "@/lib/db";
 import { categoryMeta } from "@/lib/site";
 import PostBoard from "@/components/PostBoard";
@@ -14,12 +14,15 @@ const rel = (d: Date) => {
 };
 
 export default async function PortalDashboard() {
-  const [user, posts, donors] = await Promise.all([
+  // A small preview only — never the whole table. First 4 become cards, the
+  // rest a compact "older" strip; full history lives on the category boards.
+  const [user, recent, totalPosts, tourCount, donors] = await Promise.all([
     getSessionUser(),
-    listAllPosts(), // newest first
+    latestPosts(12),
+    countPosts(),
+    countPosts("travel"),
     listBloodDonors(),
   ]);
-  const tourCount = posts.filter((p) => p.category === "travel").length;
   const firstName = user?.full_name.split(" ")[0] ?? "Officer";
   const initials = (user?.full_name ?? "O")
     .split(" ")
@@ -28,8 +31,8 @@ export default async function PortalDashboard() {
     .join("")
     .toUpperCase();
 
-  const latest = posts.slice(0, 4); // newest four as cards
-  const older = posts.slice(4); // the rest as a compact list
+  const latest = recent.slice(0, 4); // newest four as cards
+  const older = recent.slice(4); // the next few as a compact list
 
   return (
     <div>
@@ -57,7 +60,7 @@ export default async function PortalDashboard() {
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat label="Tours" value={String(tourCount)} sub="programmes" href="/portal/travel" icon={<PinIcon />} accent="#006A4E" />
         <Stat label="Blood donors" value={String(donors.length)} sub="on call" href="/portal/blood" icon={<DropIcon />} accent="#D21034" />
-        <Stat label="Notices" value={String(posts.length)} sub="posted" href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
+        <Stat label="Notices" value={String(totalPosts)} sub="posted" href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
       </div>
 
       {/* Latest posts — newest four as cards */}
@@ -65,7 +68,7 @@ export default async function PortalDashboard() {
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
           Latest posts
         </h2>
-        {posts.length > 0 && <span className="log-label text-stone">{posts.length} total</span>}
+        {totalPosts > 0 && <span className="log-label text-stone">{totalPosts} total</span>}
       </div>
       <div className="mt-4">
         <PostBoard posts={latest} showCategory empty="No posts yet." />
