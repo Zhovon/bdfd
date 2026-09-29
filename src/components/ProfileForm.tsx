@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import { updateProfileAction, type ProfileState } from "@/app/portal/actions";
 import { BLOOD_GROUPS } from "@/lib/site";
 import { useI18n } from "@/components/I18nProvider";
+import ImageInput from "@/components/ImageInput";
+import { thumbUrl } from "@/lib/media";
 
 type Props = {
   user: {
@@ -28,13 +30,13 @@ export default function ProfileForm({ user }: Props) {
       <div className="flex items-center gap-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={user.avatar_url ?? "/avatar-placeholder.svg"}
+          src={thumbUrl(user.avatar_url) ?? "/avatar-placeholder.svg"}
           alt=""
           className="h-16 w-16 rounded-full border border-line object-cover"
         />
         <label className="text-sm">
           <span className="log-label text-field">{t.photo}</span>
-          <input name="avatar" type="file" accept="image/*" className="mt-2 block text-sm text-stone" />
+          <ImageInput name="avatar" accept="image/*" className="mt-2 block text-sm text-stone" />
         </label>
       </div>
 

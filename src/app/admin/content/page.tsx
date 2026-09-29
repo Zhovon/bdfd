@@ -4,6 +4,7 @@ import { removePost } from "../actions";
 import PostEditor from "@/components/PostEditor";
 import Pagination from "@/components/Pagination";
 import { categoryMeta } from "@/lib/site";
+import { thumbUrl } from "@/lib/media";
 import ConfirmButton from "@/components/ConfirmButton";
 import { getDict } from "@/lib/i18n";
 
@@ -49,7 +50,7 @@ export default async function AdminContent({
                   {p.cover && (
                     <span className="relative h-14 w-14 shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.cover} alt="" className="h-14 w-14 rounded-md object-cover" />
+                      <img src={thumbUrl(p.cover)} alt="" className="h-14 w-14 rounded-md object-cover" />
                       {p.photoCount > 1 && (
                         <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-field px-1 text-[0.6rem] font-bold text-husk">
                           {p.photoCount}

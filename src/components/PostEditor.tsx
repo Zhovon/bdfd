@@ -3,6 +3,8 @@
 import { useActionState, useRef, useState } from "react";
 import { addPost, editPost, type PostFormState } from "@/app/admin/actions";
 import { useI18n } from "@/components/I18nProvider";
+import ImageInput from "@/components/ImageInput";
+import { thumbUrl } from "@/lib/media";
 
 const categories = ["travel", "welfare", "condolence", "association"] as const;
 
@@ -136,7 +138,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
             · {t.common.optional} · {e.coverHint}
           </span>
         </span>
-        <input name="cover" type="file" accept="image/*" multiple className={fileInput} />
+        <ImageInput name="cover" accept="image/*" multiple className={fileInput} />
       </label>
 
       <label>
@@ -265,7 +267,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
               <span className="log-label flex items-center gap-2 text-field">
                 {e.addSectionPhotos} <span className="text-stone">· {t.common.optional}</span>
               </span>
-              <input name={`block-images-${i}`} type="file" accept="image/*" multiple className={fileInput} />
+              <ImageInput name={`block-images-${i}`} accept="image/*" multiple className={fileInput} />
             </label>
             <button
               type="button"
@@ -311,7 +313,7 @@ function PhotoGrid({ photos, removeLabel }: { photos: Photo[]; removeLabel: stri
           <input type="checkbox" name="removeImage" value={img.id} className="peer sr-only" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={img.url}
+            src={thumbUrl(img.url)}
             alt=""
             className="h-20 w-28 rounded-md border border-line object-cover peer-checked:opacity-30"
           />

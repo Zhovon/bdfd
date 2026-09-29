@@ -25,6 +25,7 @@ export const bn: typeof en = {
     logOut: "লগ আউট",
     admin: "অ্যাডমিন",
     total: "মোট",
+    preparingPhotos: "ছবি প্রস্তুত হচ্ছে…",
   },
   header: {
     menu: "মেনু",
@@ -499,7 +500,7 @@ export const bn: typeof en = {
     unknownPost: "পোস্টটি পাওয়া যায়নি।",
     saveFailed: "পরিবর্তন সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
     saved: "পরিবর্তন সংরক্ষিত হয়েছে।",
-    imageTooBig: "ছবি ৪ MB-এর কম হতে হবে।",
+    imageTooBig: "ছবি ১০ MB-এর কম হতে হবে।",
     imageType: "JPG, PNG, WebP, GIF বা AVIF ছবি ব্যবহার করুন।",
     pdfTooBig: "PDF ১৫ MB-এর কম হতে হবে।",
     pdfType: "একটি PDF ফাইল আপলোড করুন।",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useI18n } from "./I18nProvider";
 import Lightbox, { type MediaItem } from "./Lightbox";
 import { GridIcon } from "./PostMedia";
+import { photoSrcSet, thumbUrl } from "@/lib/media";
 
 /** Thumbnails shown under the lead photo; the rest are reached via "+N". */
 const THUMBS = 4;
@@ -30,6 +31,8 @@ export default function SectionGallery({ images, title }: { images: string[]; ti
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={images[0]}
+            srcSet={photoSrcSet(images[0])}
+            sizes="(min-width: 768px) 768px, 100vw"
             alt=""
             loading="lazy"
             className="aspect-[16/9] w-full object-cover transition-transform hover:scale-[1.02]"
@@ -62,7 +65,7 @@ export default function SectionGallery({ images, title }: { images: string[]; ti
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={src}
+                  src={thumbUrl(src)}
                   alt=""
                   loading="lazy"
                   className="aspect-[4/3] w-full object-cover transition-transform hover:scale-[1.04]"

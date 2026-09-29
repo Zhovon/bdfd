@@ -28,6 +28,7 @@ export const en = {
     logOut: "Log out",
     admin: "Admin",
     total: "total",
+    preparingPhotos: "Preparing photos…",
   },
   header: {
     menu: "Menu",
@@ -503,7 +504,7 @@ export const en = {
     unknownPost: "Unknown post.",
     saveFailed: "Couldn't save the changes. Please try again.",
     saved: "Changes saved.",
-    imageTooBig: "Image must be under 4 MB.",
+    imageTooBig: "Image must be under 10 MB.",
     imageType: "Use a JPG, PNG, WebP, GIF or AVIF image.",
     pdfTooBig: "PDF must be under 15 MB.",
     pdfType: "Upload a PDF file.",
