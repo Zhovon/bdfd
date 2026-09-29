@@ -1,19 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import Emblem from "./Emblem";
-import { org } from "@/lib/site";
+import { useI18n } from "./I18nProvider";
 
 type Tone = "onLight" | "onDark";
 type Size = "sm" | "md";
 
 /**
  * The identity lockup: the rice-ear crest beside a two-line wordmark (a mono
- * eyebrow over a display title). Use `onDark` over the green hero/footer bands.
- * The crest chip stays green-on-cream in both tones so the mark reads anywhere.
+ * eyebrow over a display title), both drawn from the current locale. Use
+ * `onDark` over the green hero/footer bands. The crest chip stays green-on-cream
+ * in both tones so the mark reads anywhere.
  */
 export default function Brand({
   href = "/",
-  title = org.short,
-  eyebrow = org.eyebrow,
+  title,
+  eyebrow,
   tone = "onLight",
   size = "md",
   className = "",
@@ -25,6 +28,10 @@ export default function Brand({
   size?: Size;
   className?: string;
 }) {
+  const { t } = useI18n();
+  const heading = title ?? t.brand.short;
+  const kicker = eyebrow ?? t.brand.eyebrow;
+
   const chip = size === "sm" ? "h-9 w-9" : "h-11 w-11";
   const mark = size === "sm" ? "h-5 w-5" : "h-6 w-6";
   const titleSize = size === "sm" ? "text-sm" : "text-base sm:text-lg";
@@ -34,7 +41,7 @@ export default function Brand({
   return (
     <Link
       href={href}
-      aria-label={`${org.name} — home`}
+      aria-label={`${t.brand.name} — home`}
       className={`group inline-flex items-center gap-3 ${className}`}
     >
       <span
@@ -44,11 +51,11 @@ export default function Brand({
         <Emblem className={mark} />
       </span>
       <span className="min-w-0 leading-tight">
-        <span className={`log-label block text-[0.58rem] ${eyebrowColor}`}>{eyebrow}</span>
+        <span className={`log-label block text-[0.58rem] ${eyebrowColor}`}>{kicker}</span>
         <span
           className={`block font-[family-name:var(--font-display)] font-bold tracking-tight ${titleSize} ${titleColor}`}
         >
-          {title}
+          {heading}
         </span>
       </span>
     </Link>

@@ -4,17 +4,19 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { login, type LoginState } from "@/app/actions";
 import PasswordInput from "@/components/PasswordInput";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function LoginForm({ notice }: { notice?: string }) {
+  const { t } = useI18n();
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
 
   return (
     <form action={formAction} className="w-full max-w-sm">
-      <p className="log-label text-brand">Members</p>
+      <p className="log-label text-brand">{t.auth.members}</p>
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
-        Log in
+        {t.auth.logIn}
       </h1>
-      <p className="mt-2 text-sm text-stone">For approved departmental officers only.</p>
+      <p className="mt-2 text-sm text-stone">{t.auth.loginSubtitle}</p>
       {notice && (
         <p className="mt-4 rounded-lg border border-brand bg-brand/5 px-4 py-3 text-sm text-brand">
           {notice}
@@ -22,7 +24,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
       )}
 
       <label className="mt-8 block">
-        <span className="log-label text-field">Official email</span>
+        <span className="log-label text-field">{t.auth.email}</span>
         <input
           name="email"
           type="email"
@@ -34,9 +36,9 @@ export default function LoginForm({ notice }: { notice?: string }) {
 
       <label className="mt-6 block">
         <span className="flex items-center justify-between">
-          <span className="log-label text-field">Password</span>
+          <span className="log-label text-field">{t.auth.password}</span>
           <Link href="/forgot" className="log-label text-brand hover:underline">
-            Forgot?
+            {t.auth.forgotShort}
           </Link>
         </span>
         <PasswordInput name="password" autoComplete="current-password" />
@@ -49,13 +51,13 @@ export default function LoginForm({ notice }: { notice?: string }) {
         disabled={pending}
         className="mt-8 rounded-full bg-brand px-8 py-3.5 font-semibold text-husk transition-transform hover:-translate-y-0.5 disabled:opacity-60"
       >
-        {pending ? "Checking…" : "Log in"}
+        {pending ? t.auth.checking : t.auth.logIn}
       </button>
 
       <p className="mt-6 text-sm text-stone">
-        Not registered yet?{" "}
+        {t.auth.notRegistered}{" "}
         <Link href="/register" className="font-semibold text-brand underline-offset-2 hover:underline">
-          Create an account
+          {t.auth.createAccount}
         </Link>
       </p>
     </form>

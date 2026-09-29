@@ -3,27 +3,29 @@ import { getSessionUser } from "@/lib/session";
 import { latestPosts, countPosts } from "@/lib/content";
 import { listBloodDonors } from "@/lib/db";
 import { categoryMeta } from "@/lib/site";
+import { getDict, type Dict } from "@/lib/i18n";
 import PostBoard from "@/components/PostBoard";
 
-const rel = (d: Date) => {
+const rel = (d: Date, t: Dict) => {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days}d ago`;
+  if (days <= 0) return t.dashboard.today;
+  if (days === 1) return t.dashboard.yesterday;
+  if (days < 7) return `${days} ${t.dashboard.daysAgo}`;
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(d));
 };
 
 export default async function PortalDashboard() {
   // A small preview only — never the whole table. First 4 become cards, the
   // rest a compact "older" strip; full history lives on the category boards.
-  const [user, recent, totalPosts, tourCount, donors] = await Promise.all([
+  const [user, t, recent, totalPosts, tourCount, donors] = await Promise.all([
     getSessionUser(),
+    getDict(),
     latestPosts(12),
     countPosts(),
     countPosts("travel"),
     listBloodDonors(),
   ]);
-  const firstName = user?.full_name.split(" ")[0] ?? "Officer";
+  const firstName = user?.full_name.split(" ")[0] ?? t.dashboard.officer;
   const initials = (user?.full_name ?? "O")
     .split(" ")
     .map((w) => w[0])
@@ -48,41 +50,42 @@ export default async function PortalDashboard() {
         </span>
         <div>
           <p className="log-label text-brand">
-            Members&apos; dashboard · <span className="capitalize">{user?.role}</span>
+            {t.dashboard.memberDashboard} · <span className="capitalize">{user?.role}</span>
           </p>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
-            Welcome, {firstName}
+            {t.dashboard.welcome}, {firstName}
           </h1>
         </div>
       </div>
 
       {/* Stats */}
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Stat label="Tours" value={String(tourCount)} sub="programmes" href="/portal/travel" icon={<PinIcon />} accent="#006A4E" />
-        <Stat label="Blood donors" value={String(donors.length)} sub="on call" href="/portal/blood" icon={<DropIcon />} accent="#D21034" />
-        <Stat label="Notices" value={String(totalPosts)} sub="posted" href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
+        <Stat label={t.dashboard.tours} value={String(tourCount)} sub={t.dashboard.toursSub} href="/portal/travel" icon={<PinIcon />} accent="#006A4E" />
+        <Stat label={t.dashboard.bloodDonors} value={String(donors.length)} sub={t.dashboard.bloodDonorsSub} href="/portal/blood" icon={<DropIcon />} accent="#D21034" />
+        <Stat label={t.dashboard.notices} value={String(totalPosts)} sub={t.dashboard.noticesSub} href="/portal/association" icon={<DocIcon />} accent="#0A3B2C" />
       </div>
 
       {/* Latest posts — newest four as cards */}
       <div className="mt-12 flex items-baseline justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
-          Latest posts
+          {t.dashboard.latest}
         </h2>
-        {totalPosts > 0 && <span className="log-label text-stone">{totalPosts} total</span>}
+        {totalPosts > 0 && <span className="log-label text-stone">{totalPosts} {t.common.total}</span>}
       </div>
       <div className="mt-4">
-        <PostBoard posts={latest} showCategory empty="No posts yet." />
+        <PostBoard posts={latest} showCategory empty={t.dashboard.noPosts} />
       </div>
 
       {/* Older notices — the rest, compact, newest first */}
       {older.length > 0 && (
         <>
           <h2 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-            Older notices
+            {t.dashboard.older}
           </h2>
           <ul className="mt-4 overflow-hidden rounded-xl border border-line">
             {older.map((p) => {
               const meta = categoryMeta(p.category);
+              const label = t.boards[p.category as keyof typeof t.boards]?.label ?? p.category;
               return (
                 <li key={p.id} className="border-b border-line last:border-0">
                   <Link
@@ -93,10 +96,10 @@ export default async function PortalDashboard() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-field">{p.title}</span>
                       <span className="log-label" style={{ color: meta.accent }}>
-                        {meta.label}
+                        {label}
                       </span>
                     </span>
-                    <span className="log-label shrink-0 text-stone">{rel(p.created_at)}</span>
+                    <span className="log-label shrink-0 text-stone">{rel(p.created_at, t)}</span>
                   </Link>
                 </li>
               );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "./I18nProvider";
 
 type Item = { kind: "image" | "video"; src: string };
 
@@ -42,6 +43,7 @@ export default function PostMedia({
   videos: string[];
   title: string;
 }) {
+  const { t } = useI18n();
   const items: Item[] = [
     ...images.map((src) => ({ kind: "image" as const, src })),
     ...videos.map((src) => ({ kind: "video" as const, src })),
@@ -78,8 +80,8 @@ export default function PostMedia({
 
   const mainImage = images[0] ?? null;
   const galleryLabel = [
-    images.length ? `${images.length} photo${images.length > 1 ? "s" : ""}` : null,
-    videos.length ? `${videos.length} video${videos.length > 1 ? "s" : ""}` : null,
+    images.length ? `${images.length} ${images.length > 1 ? t.notice.photos : t.notice.photo}` : null,
+    videos.length ? `${videos.length} ${videos.length > 1 ? t.notice.videos : t.notice.video}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -114,7 +116,7 @@ export default function PostMedia({
             className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-field/85 px-4 py-2 text-sm font-semibold text-husk backdrop-blur-sm transition-colors hover:bg-field"
           >
             <GridIcon />
-            View gallery <span className="font-normal text-husk/70">· {galleryLabel}</span>
+            {t.notice.viewGallery} <span className="font-normal text-husk/70">· {galleryLabel}</span>
           </button>
         )}
       </div>
@@ -139,7 +141,7 @@ export default function PostMedia({
                 onClick={() => setOpen(false)}
                 className="log-label rounded-full border border-husk/30 px-4 py-2 text-husk transition-colors hover:bg-husk hover:text-field"
               >
-                Close ✕
+                {t.notice.close}
               </button>
             </div>
 

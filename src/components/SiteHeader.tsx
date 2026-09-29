@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Brand from "@/components/Brand";
-import { org, modules } from "@/lib/site";
+import LangToggle from "@/components/LangToggle";
+import { useI18n } from "@/components/I18nProvider";
+import { modules } from "@/lib/site";
 
 type Props = { authed?: boolean; isAdmin?: boolean };
 
 export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   // Logged-in visitors get links into the members' area; anonymous ones to login.
@@ -32,6 +35,7 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
         <Brand href="/" tone="onLight" />
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <LangToggle />
           {authed ? (
             <>
               {isAdmin && (
@@ -39,14 +43,14 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
                   href="/admin"
                   className="log-label hidden rounded-full px-3 py-2 text-field transition-colors hover:text-brand sm:inline-block"
                 >
-                  Admin
+                  {t.common.admin}
                 </Link>
               )}
               <Link
                 href="/portal"
                 className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-husk transition-transform hover:-translate-y-0.5"
               >
-                Members&apos; area
+                {t.header.goToMembers}
               </Link>
             </>
           ) : (
@@ -55,13 +59,13 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
                 href="/login"
                 className="log-label rounded-full px-3 py-2 text-field transition-colors hover:text-brand"
               >
-                Log in
+                {t.header.login}
               </Link>
               <Link
                 href="/register"
                 className="hidden rounded-full bg-brand px-4 py-2 text-sm font-semibold text-husk transition-transform hover:-translate-y-0.5 sm:inline-block"
               >
-                Register
+                {t.header.register}
               </Link>
             </>
           )}
@@ -73,7 +77,7 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
             aria-expanded={open}
           >
             <WheatIcon />
-            <span className="log-label text-field group-hover:text-husk">Menu</span>
+            <span className="log-label text-field group-hover:text-husk">{t.header.menu}</span>
           </button>
         </div>
       </div>
@@ -84,7 +88,7 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Site menu"
+            aria-label={t.header.siteMenu}
             className={`fixed inset-0 z-[100] transition-opacity duration-300 ${
               open ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
@@ -92,37 +96,40 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
             <div className="contour absolute inset-0 bg-field" />
         <div className="relative flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-husk/15 px-5 py-3">
-            <span className="log-label text-grain">{org.short} · menu</span>
+            <span className="log-label text-grain">{t.brand.short} · {t.header.menu}</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="log-label rounded-full border border-husk/30 px-4 py-2 text-husk transition-colors hover:bg-husk hover:text-field"
             >
-              Close ✕
+              {t.header.close}
             </button>
           </div>
 
           <nav className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-1 px-5">
-            <p className="log-label mb-2 text-husk/40">Inside the members&apos; area</p>
-            {modules.map((m) => (
-              <Link
-                key={m.slug}
-                href={moduleHref(m.slug)}
-                onClick={() => setOpen(false)}
-                className="group grid grid-cols-[auto_1fr_auto] items-center gap-5 border-b border-husk/10 py-4 transition-colors hover:bg-husk/5"
-              >
-                <span className="log-label w-12 text-grain">{m.code}</span>
-                <span className="min-w-0">
-                  <span className="block font-[family-name:var(--font-display)] text-2xl font-bold text-husk transition-transform duration-300 group-hover:translate-x-2 sm:text-3xl">
-                    {m.title}
+            <p className="log-label mb-2 text-husk/40">{t.header.insideMembers}</p>
+            {modules.map((m) => {
+              const board = t.boards[m.slug as keyof typeof t.boards];
+              return (
+                <Link
+                  key={m.slug}
+                  href={moduleHref(m.slug)}
+                  onClick={() => setOpen(false)}
+                  className="group grid grid-cols-[auto_1fr_auto] items-center gap-5 border-b border-husk/10 py-4 transition-colors hover:bg-husk/5"
+                >
+                  <span className="log-label w-12 text-grain">{m.code}</span>
+                  <span className="min-w-0">
+                    <span className="block font-[family-name:var(--font-display)] text-2xl font-bold text-husk transition-transform duration-300 group-hover:translate-x-2 sm:text-3xl">
+                      {board.title}
+                    </span>
+                    <span className="mt-1 hidden text-sm text-husk/55 sm:block">{board.blurb}</span>
                   </span>
-                  <span className="mt-1 hidden text-sm text-husk/55 sm:block">{m.blurb}</span>
-                </span>
-                <span className="log-label text-husk/40 group-hover:text-grain">
-                  {authed ? "open →" : "members"}
-                </span>
-              </Link>
-            ))}
+                  <span className="log-label text-husk/40 group-hover:text-grain">
+                    {authed ? t.header.open : t.header.membersTag}
+                  </span>
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="flex flex-wrap items-center justify-center gap-3 px-5 py-6">
@@ -132,7 +139,7 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
                 onClick={() => setOpen(false)}
                 className="rounded-full bg-brand px-6 py-3 font-semibold text-husk"
               >
-                Go to members&apos; area
+                {t.header.goToMembers}
               </Link>
             ) : (
               <>
@@ -141,14 +148,14 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
                   onClick={() => setOpen(false)}
                   className="rounded-full bg-brand px-6 py-3 font-semibold text-husk"
                 >
-                  Register
+                  {t.header.register}
                 </Link>
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
                   className="rounded-full border border-husk/30 px-6 py-3 font-semibold text-husk transition-colors hover:bg-husk hover:text-field"
                 >
-                  Log in
+                  {t.header.login}
                 </Link>
               </>
             )}

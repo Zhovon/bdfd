@@ -6,6 +6,7 @@ import ModuleHeader from "@/components/ModuleHeader";
 import { requireUser } from "@/lib/session";
 import { listPostsPaged, getActivePoll, getUserVote, listClosedPolls, getUserVotes } from "@/lib/content";
 import { getModule } from "@/lib/site";
+import { getDict } from "@/lib/i18n";
 
 const mod = getModule("travel")!;
 
@@ -16,7 +17,8 @@ export default async function TravelPage({
 }) {
   const user = await requireUser();
   const { page } = await searchParams;
-  const [postPage, poll, closed] = await Promise.all([
+  const [t, postPage, poll, closed] = await Promise.all([
+    getDict(),
     listPostsPaged("travel", Number(page) || 1),
     getActivePoll(),
     listClosedPolls(),
@@ -35,17 +37,17 @@ export default async function TravelPage({
       )}
 
       <h2 className="mt-10 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-        Tour programmes &amp; plans
+        {t.boardsPage.tourProgrammes}
       </h2>
       <div className="mt-4">
-        <PostBoard posts={postPage.items} empty="No tour programmes posted yet." />
+        <PostBoard posts={postPage.items} empty={t.boardsPage.noTours} />
       </div>
       <Pagination page={postPage.page} pageCount={postPage.pageCount} basePath="/portal/travel" />
 
       {closed.length > 0 && (
         <>
           <h2 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-            Past polls
+            {t.boardsPage.pastPolls}
           </h2>
           <div className="mt-4 grid gap-4">
             {closed.map((p) => (

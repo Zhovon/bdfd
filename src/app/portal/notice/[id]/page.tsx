@@ -5,7 +5,8 @@ import PaymentCTA from "@/components/PaymentCTA";
 import { requireUser } from "@/lib/session";
 import { getPost } from "@/lib/content";
 import { postTotals } from "@/lib/payments";
-import { getModule, categoryMeta } from "@/lib/site";
+import { categoryMeta } from "@/lib/site";
+import { getDict } from "@/lib/i18n";
 
 const fmt = (d: Date) =>
   new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(d));
@@ -13,10 +14,11 @@ const fmt = (d: Date) =>
 export default async function NoticePage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
+  const t = await getDict();
   const post = await getPost(Number(id));
   if (!post) notFound();
 
-  const mod = getModule(post.category);
+  const board = t.boards[post.category as keyof typeof t.boards];
   const meta = categoryMeta(post.category);
   const totals = post.paymentMode === "none" ? null : await postTotals(post.id);
 
@@ -32,7 +34,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
         href={`/portal/${post.category}`}
         className="log-label link-underline inline-flex items-center gap-1 text-stone transition-colors hover:text-field"
       >
-        ← {mod?.title ?? "Back"}
+        ← {board?.title ?? t.common.back}
       </Link>
 
       <div className="mt-4 flex items-center gap-2">
@@ -40,7 +42,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
           className="log-label rounded-full px-2.5 py-1"
           style={{ backgroundColor: meta.tint, color: meta.accent }}
         >
-          {meta.label}
+          {board?.label ?? post.category}
         </span>
         <span className="log-label text-stone">{fmt(post.created_at)}</span>
       </div>
@@ -108,7 +110,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
         <section className="mt-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-field">
-              Programme details
+              {t.notice.programmeDetails}
             </h2>
             <a
               href={post.pdfUrl}
@@ -117,7 +119,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
               download
               className="inline-flex items-center gap-2 rounded-full border border-field/30 px-5 py-2.5 text-sm font-semibold text-field transition-colors hover:bg-field hover:text-husk"
             >
-              Download PDF ↓
+              {t.notice.downloadPdf}
             </a>
           </div>
           <iframe

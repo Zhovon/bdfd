@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Brand from "@/components/Brand";
-import { memberNav } from "@/lib/site";
+import LangToggle from "@/components/LangToggle";
+import { useI18n } from "@/components/I18nProvider";
+import { modules } from "@/lib/site";
 import { logout } from "@/app/actions";
 
 type Props = {
@@ -14,24 +16,36 @@ type Props = {
 
 export default function MemberShell({ user, unread, children }: Props) {
   const pathname = usePathname();
+  const { t } = useI18n();
+
+  const navItems = [
+    { href: "/portal", label: t.nav.dashboard },
+    ...modules.map((m) => ({
+      href: `/portal/${m.slug}`,
+      label: t.boards[m.slug as keyof typeof t.boards].title,
+    })),
+    { href: "/portal/notifications", label: t.nav.notifications },
+    { href: "/portal/profile", label: t.nav.profile },
+  ];
 
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-line bg-husk/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <Brand href="/portal" title="Members' area" size="sm" />
+          <Brand href="/portal" title={t.brand.membersArea} size="sm" />
           <div className="flex items-center gap-3">
+            <LangToggle />
             {user.isAdmin && (
               <Link
                 href="/admin"
                 className="log-label rounded-full border border-field/25 px-3 py-1.5 text-field transition-colors hover:bg-field hover:text-husk"
               >
-                Admin
+                {t.common.admin}
               </Link>
             )}
             <Link
               href="/portal/notifications"
-              aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
+              aria-label={`${t.nav.notifications}${unread ? ` (${unread})` : ""}`}
               className="relative grid h-9 w-9 place-items-center rounded-full text-field transition-colors hover:bg-husk-deep"
             >
               <BellIcon />
@@ -44,7 +58,7 @@ export default function MemberShell({ user, unread, children }: Props) {
             <span className="hidden text-sm text-stone sm:inline">{user.name}</span>
             <form action={logout}>
               <button className="log-label rounded-full border border-line px-3 py-1.5 text-stone transition-colors hover:text-field">
-                Log out
+                {t.common.logOut}
               </button>
             </form>
           </div>
@@ -53,7 +67,7 @@ export default function MemberShell({ user, unread, children }: Props) {
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-5 py-8 md:flex-row">
         <nav className="flex gap-1 overflow-x-auto md:w-56 md:flex-col md:overflow-visible">
-          {memberNav.map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link

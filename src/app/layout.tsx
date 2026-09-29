@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { org } from "@/lib/site";
+import { getLocale, getDict } from "@/lib/i18n";
+import { I18nProvider } from "@/components/I18nProvider";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -48,13 +50,18 @@ export const viewport: Viewport = {
   themeColor: "#0a3b2c",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const [locale, dict] = await Promise.all([getLocale(), getDict()]);
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${display.variable} ${body.variable} ${mono.variable} h-full`}
     >
-      <body className="paper-grain min-h-full flex flex-col">{children}</body>
+      <body className="paper-grain min-h-full flex flex-col">
+        <I18nProvider locale={locale} dict={dict}>
+          {children}
+        </I18nProvider>
+      </body>
     </html>
   );
 }
