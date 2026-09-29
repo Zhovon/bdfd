@@ -97,8 +97,10 @@ async function store(buffer: Buffer, filename: string, contentType: string): Pro
     );
     return `${S3_PUBLIC_URL}/${key}`;
   }
-  await mkdir(LOCAL_UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(LOCAL_UPLOAD_DIR, filename), buffer);
+  // Runtime user data, not source: tell the build's file tracer not to follow it
+  // (otherwise it copies the whole project into the server bundle).
+  await mkdir(/*turbopackIgnore: true*/ LOCAL_UPLOAD_DIR, { recursive: true });
+  await writeFile(path.join(/*turbopackIgnore: true*/ LOCAL_UPLOAD_DIR, filename), buffer);
   return `/uploads/${filename}`;
 }
 
@@ -196,7 +198,7 @@ export async function deleteUploads(urls: (string | null | undefined)[]): Promis
         const name = url.slice("/uploads/".length);
         if (!SAFE_NAME.test(name)) continue;
         for (const dir of [LOCAL_UPLOAD_DIR, LEGACY_UPLOAD_DIR]) {
-          await unlink(path.join(dir, name)).catch(() => {});
+          await unlink(path.join(/*turbopackIgnore: true*/ dir, name)).catch(() => {});
         }
       }
     } catch (err) {
@@ -213,7 +215,7 @@ export async function readLocalUpload(name: string): Promise<{ body: Buffer; typ
   if (!type) return null;
   for (const dir of [LOCAL_UPLOAD_DIR, LEGACY_UPLOAD_DIR]) {
     try {
-      return { body: await readFile(path.join(dir, name)), type };
+      return { body: await readFile(path.join(/*turbopackIgnore: true*/ dir, name)), type };
     } catch {
       // Not in this directory — try the next one.
     }
