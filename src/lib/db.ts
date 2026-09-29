@@ -79,7 +79,7 @@ let schemaReady: Promise<void> | null = null;
 
 // Bump when the DDL below changes so the next deploy re-runs the migration once.
 // Between changes, cold serverless instances skip the ~20 DDL round-trips.
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
@@ -313,6 +313,10 @@ async function migrate(db: Queryable): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  // Notifications record what happened (kind + params) and are rendered in the
+  // reader's language; title/body keep English text for older rows.
+  await db.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS kind TEXT`);
+  await db.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS params JSONB`);
   await db.query(
     `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, read)`,
   );

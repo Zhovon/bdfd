@@ -25,11 +25,11 @@ import {
 } from "@/lib/content";
 import { getDonation, setDonationStatus, updatePaymentMethod, type DonationStatus } from "@/lib/payments";
 import { requireAdmin, requireStaff } from "@/lib/session";
-import { approvalEmail, rejectionEmail, sendMail } from "@/lib/mailer";
+import { sendMail } from "@/lib/mailer";
+import { buildEmail } from "@/lib/messages";
 import { saveUploads, savePdf, deleteUploads, UploadError } from "@/lib/uploads";
 import { getDict } from "@/lib/i18n";
 import { notifyUser, notifyApprovedMembers } from "@/lib/notifications";
-import { getModule } from "@/lib/site";
 
 const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim() : "");
 
@@ -51,16 +51,11 @@ async function changeStatus(rawId: FormDataEntryValue | null, status: UserStatus
   await setUserStatus(user.id, status);
   // The welcome email/notification is for a first approval — not for unblocking.
   if (status === "approved" && firstApproval) {
-    const { subject, text } = approvalEmail(user.full_name);
+    const { subject, text } = buildEmail({ kind: "approved", name: user.full_name });
     await sendMail(user.official_email, subject, text);
-    await notifyUser(user.id, {
-      type: "account",
-      title: "Your account is approved",
-      body: "Welcome — you now have full access to the members' area.",
-      link: "/portal",
-    });
+    await notifyUser(user.id, { kind: "accountApproved" }, "/portal");
   } else if (status === "rejected" && firstApproval) {
-    const { subject, text } = rejectionEmail(user.full_name);
+    const { subject, text } = buildEmail({ kind: "rejected", name: user.full_name });
     await sendMail(user.official_email, subject, text);
   }
   revalidatePath("/admin");
@@ -164,9 +159,9 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     return { ok: false, message: m.publishFailed };
   }
 
-  const mod = getModule(category);
   await notifyApprovedMembers(
-    { type: "notice", title: `New ${mod?.title ?? "notice"}`, body: title, link: `/portal/${category}` },
+    { kind: "newNotice", board: category, noticeTitle: title },
+    `/portal/${category}`,
     staff.id,
   );
   revalidatePath("/admin/content");
@@ -314,15 +309,15 @@ async function setDonation(rawId: FormDataEntryValue | null, status: DonationSta
   // Only a still-'reported' row changes, and only then is the member notified.
   const changed = await setDonationStatus(donation.id, status);
   if (changed && donation.user_id) {
-    const taka = `৳ ${Number(donation.amount).toLocaleString("en-BD")}`;
-    const isTour = donation.kind === "participation";
-    const noun = isTour ? "participation payment" : "contribution";
     const link = donation.post_id ? `/portal/notice/${donation.post_id}` : "/portal/welfare";
     await notifyUser(
       donation.user_id,
-      status === "verified"
-        ? { type: "donation", title: isTour ? "Participation confirmed" : "Donation verified", body: `Your ${taka} ${noun} has been confirmed. Thank you.`, link }
-        : { type: "donation", title: isTour ? "Participation not confirmed" : "Donation not verified", body: `We couldn't confirm your ${taka} ${noun}. Please check the reference or contact the office.`, link },
+      {
+        kind: status === "verified" ? "paymentConfirmed" : "paymentRejected",
+        amount: Number(donation.amount),
+        tour: donation.kind === "participation",
+      },
+      link,
     );
   }
   revalidatePath("/admin/donations");

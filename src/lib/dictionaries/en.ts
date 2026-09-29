@@ -456,6 +456,32 @@ export const en = {
     instructions: "Instructions",
     save: "Save",
   },
+  /** In-app notifications; {placeholders} are filled when shown. */
+  notif: {
+    accountApprovedTitle: "Your account is approved",
+    accountApprovedBody: "Welcome — you now have full access to the members' area.",
+    newNotice: "New notice · {board}",
+    tourConfirmedTitle: "Participation confirmed",
+    donationConfirmedTitle: "Donation verified",
+    paymentConfirmedBody: "Your {amount} payment has been confirmed. Thank you.",
+    tourRejectedTitle: "Participation not confirmed",
+    donationRejectedTitle: "Donation not verified",
+    paymentRejectedBody: "We couldn't confirm your {amount} payment. Please check the reference or contact the office.",
+  },
+  /** Emails are sent in Bangla and English together; {placeholders} are filled in. */
+  email: {
+    greeting: "Dear {name},",
+    signOff: "Regards,\nAdministration, {site}",
+    approvedSubject: "Your registration is approved",
+    approvedBody:
+      "Your registration for {site} has been approved. You can now log in and use the members' area.",
+    rejectedSubject: "Your registration could not be approved",
+    rejectedBody:
+      "We were unable to verify your registration for {site} at this time. Please contact the administration if you believe this is an error.",
+    resetSubject: "Reset your password",
+    resetBody:
+      "We received a request to reset your password. Use the link below within one hour to set a new one:\n\n{url}\n\nIf you didn't request this, you can ignore this email.",
+  },
   msg: {
     fixFields: "Please fix the highlighted fields.",
     enterName: "Please enter your full name.",

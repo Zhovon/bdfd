@@ -11,7 +11,7 @@ const rel = (d: Date, t: Dict) => {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
   if (days <= 0) return t.dashboard.today;
   if (days === 1) return t.dashboard.yesterday;
-  if (days < 7) return `${days} ${t.dashboard.daysAgo}`;
+  if (days < 7) return `${new Intl.NumberFormat(t.intl).format(days)} ${t.dashboard.daysAgo}`;
   return new Intl.DateTimeFormat(t.intl, { day: "2-digit", month: "short" }).format(new Date(d));
 };
 
