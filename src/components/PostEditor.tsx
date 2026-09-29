@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { addPost, editPost, type PostFormState } from "@/app/admin/actions";
 
 const categories = [
@@ -57,24 +57,26 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
     })) ?? [],
   );
   const nextKey = useRef((initial?.blocks.length ?? 0) + 1);
-  const formRef = useRef<HTMLFormElement>(null);
 
   const addSection = () =>
     setSections((s) => [...s, { key: nextKey.current++, id: null, heading: "", body: "", images: [] }]);
   const removeSection = (key: number) => setSections((s) => s.filter((x) => x.key !== key));
 
   // Reset a fresh post after a successful publish (but keep an edited one).
-  useEffect(() => {
+  // React resets the uncontrolled fields itself; this clears the controlled ones,
+  // adjusting state during render when a new result arrives.
+  const [handled, setHandled] = useState(state);
+  if (state !== handled) {
+    setHandled(state);
     if (state?.ok && !editing) {
-      formRef.current?.reset();
       setSections([]);
       setPaymentMode("none");
       setCategory("travel");
     }
-  }, [state, editing]);
+  }
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-5">
+    <form action={formAction} className="grid gap-5">
       <input type="hidden" name="blockCount" value={sections.length} />
       {initial && <input type="hidden" name="id" value={initial.id} />}
 

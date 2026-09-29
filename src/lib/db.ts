@@ -1,5 +1,5 @@
 import "server-only";
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 import { hashPassword } from "@/lib/password";
 
 // Reuse the pool across hot reloads in dev so we don't exhaust connections.
@@ -26,6 +26,32 @@ if (process.env.NODE_ENV !== "production") {
   globalForDb._portalPool = pool;
 }
 
+/** Run `fn` inside a single transaction; rolls back if it throws. */
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** A positive integer that fits a Postgres INTEGER column (SERIAL ids). */
+export const isDbId = (n: unknown): n is number =>
+  typeof n === "number" && Number.isInteger(n) && n > 0 && n <= 2147483647;
+
+/** Parse a route/form value into a valid row id, or null. */
+export const parseId = (v: unknown): number | null => {
+  const n = typeof v === "string" && /^\d+$/.test(v.trim()) ? Number(v) : typeof v === "number" ? v : NaN;
+  return isDbId(n) ? n : null;
+};
+
 export type UserRole = "member" | "moderator" | "admin";
 export type UserStatus = "pending" | "approved" | "rejected" | "blocked";
 
@@ -44,6 +70,7 @@ export type User = {
   blood_available: boolean;
   created_at: Date;
   approved_at: Date | null;
+  session_version: number;
 };
 
 export type UserWithHash = User & { password_hash: string };
@@ -52,7 +79,7 @@ let schemaReady: Promise<void> | null = null;
 
 // Bump when the DDL below changes so the next deploy re-runs the migration once.
 // Between changes, cold serverless instances skip the ~20 DDL round-trips.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
@@ -93,6 +120,10 @@ export function ensureSchema(): Promise<void> {
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_group TEXT`);
       await pool.query(
         `ALTER TABLE users ADD COLUMN IF NOT EXISTS blood_available BOOLEAN NOT NULL DEFAULT false`,
+      );
+      // Bumped on password change/reset: invalidates every session and reset link.
+      await pool.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0`,
       );
 
       await pool.query(`
@@ -254,6 +285,12 @@ export function ensureSchema(): Promise<void> {
         `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, read)`,
       );
 
+      // Only Travel & Tourism posts may carry a payment; clear any older ones.
+      await pool.query(
+        `UPDATE posts SET payment_mode = 'none', fee_amount = NULL
+         WHERE category <> 'travel' AND payment_mode <> 'none'`,
+      );
+
       await ensureAdmin();
       await seedPaymentMethods();
       await seedContent();
@@ -309,7 +346,7 @@ async function seedContent(): Promise<void> {
     // [category, title, body, payment_mode, fee_amount]
     const posts: [string, string, string, string, number | null][] = [
       ["travel", "Winter tour — Bandarban, 3 days", "A departmental tour to the Bandarban hills is being planned for this winter. Families welcome. Reserve your seat below; the fee covers transport, lodging and meals.", "participation", 3000],
-      ["welfare", "Support for a colleague's medical treatment", "A serving officer needs assistance for urgent medical treatment. Contributions to the welfare fund are requested — give whatever you can using the button below.", "donation", null],
+      ["welfare", "Support for a colleague's medical treatment", "A serving officer needs assistance for urgent medical treatment. Please contact the association office if you can help.", "none", null],
       ["condolence", "In memory of a retired colleague", "We mourn the passing of a respected retired officer. Our condolences to the family. Details of support for the bereaved family will be posted here.", "none", null],
       ["association", "About the association", "This board carries official association information — the committee, general notices, and neutral election information such as the schedule, voter list and final list of candidates. No personal campaigning is hosted here.", "none", null],
     ];
@@ -336,7 +373,7 @@ async function seedContent(): Promise<void> {
 /* ------------------------------- Users --------------------------------- */
 
 const PUBLIC_COLS =
-  "id, full_name, official_email, mobile, service_id, designation, posting, role, status, avatar_url, blood_group, blood_available, created_at, approved_at";
+  "id, full_name, official_email, mobile, service_id, designation, posting, role, status, avatar_url, blood_group, blood_available, created_at, approved_at, session_version";
 
 export type NewUser = {
   fullName: string;
@@ -378,6 +415,7 @@ export async function getUserByEmail(email: string): Promise<UserWithHash | null
 }
 
 export async function getUserById(id: number): Promise<User | null> {
+  if (!isDbId(id)) return null;
   await ensureSchema();
   const { rows } = await pool.query<User>(`SELECT ${PUBLIC_COLS} FROM users WHERE id = $1`, [id]);
   return rows[0] ?? null;
@@ -436,9 +474,24 @@ export async function deleteUser(id: number): Promise<void> {
   await pool.query(`DELETE FROM users WHERE id = $1 AND role <> 'admin'`, [id]);
 }
 
-export async function setPassword(id: number, passwordHash: string): Promise<void> {
+/**
+ * Set a new password and bump the session version, which signs out every
+ * existing session and voids any outstanding reset link. Only applies while the
+ * row is still at `expectedVersion`, so a reset link can't be used twice even
+ * concurrently. Returns whether the password changed.
+ */
+export async function setPassword(
+  id: number,
+  passwordHash: string,
+  expectedVersion: number,
+): Promise<boolean> {
   await ensureSchema();
-  await pool.query(`UPDATE users SET password_hash = $2 WHERE id = $1`, [id, passwordHash]);
+  const { rowCount } = await pool.query(
+    `UPDATE users SET password_hash = $2, session_version = session_version + 1
+     WHERE id = $1 AND session_version = $3`,
+    [id, passwordHash, expectedVersion],
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 export type ProfileUpdate = {

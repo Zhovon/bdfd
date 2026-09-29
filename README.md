@@ -18,19 +18,19 @@ an administrator verifies and approves them, and only then can they log in.
 - Profile edit with photo upload and blood-donor opt-in
 
 **Members' area (`/portal`, login-gated)**
-- Dashboard: fund total, blood-donor count, notices, module grid, latest notices
+- Dashboard: tour count, blood-donor count, notice count, latest notices
 - Travel & Tourism — tour notices + next-trip poll (one vote per member)
-- Welfare — support appeals, each with its own open-amount donation button
+- Welfare — support notices for colleagues in need (informational, no payments)
 - Blood Directory — volunteer donors, searchable by blood group
 - Condolence & Support — remembrance notices
 - Association Information — committee info + neutral election notices
 - Rich notices — cover image, excerpt, and ordered content sections with per-section photo galleries; each board links to a full notice detail page
 
 **Per-post payments (no Stripe / no card processing — gateway-ready)**
-- Every notice can carry a payment intent: **participation** (a fixed tour fee) or **donation** (open amount)
-- A tour notice shows a **Participate — ৳fee** button; a welfare appeal shows a **Donate** button (payer chooses the amount, with quick-pick chips)
+- Only **Travel & Tourism** notices can carry a payment intent: **participation** (a fixed tour fee) or **donation** (open amount); other boards are informational
+- A tour notice shows a **Participate — ৳fee** button, or a **Donate** button when set to an open amount (payer chooses, with quick-pick chips)
 - The payment page shows the mobile-banking / bank details, then the member **reports** what they paid (amount, method, transaction reference)
-- Admin **verifies** each contribution; verified totals show per appeal and as the welfare fund (scoped to donations, so tour fees don't inflate it)
+- Staff **verify** or **reject** each reported contribution (once — a decided payment can't be flipped); verified totals show per notice
 - Amounts and kind are **server-authoritative** — the tour fee is re-read from the post, never trusted from the client
 - **Gateway-ready:** the `donations` table carries `provider` / `gateway_ref` columns; a real gateway (SSLCommerz / bKash PGW) fills them and lands the row verified, no rework
 
@@ -38,7 +38,7 @@ an administrator verifies and approves them, and only then can they log in.
 - Membership — dashboard counts, pending approvals, roles, block/unblock, delete, CSV export
 - Content — publish / delete notices per board; set each notice's payment mode + fee
 - Polls — create polls (closes the previous), view live results
-- Payments — verify / reject reported contributions (tour + welfare), running fund totals
+- Payments — verify / reject reported contributions, running totals
 - Accounts — edit the mobile-banking & bank-transfer details shown on every payment page
 
 **Security**

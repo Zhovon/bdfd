@@ -1,5 +1,6 @@
 import "server-only";
-import { pool, ensureSchema } from "@/lib/db";
+import type { PoolClient } from "pg";
+import { pool, ensureSchema, isDbId, withTransaction } from "@/lib/db";
 
 export type PostCategory = "travel" | "welfare" | "condolence" | "association";
 
@@ -121,6 +122,10 @@ async function toCards(rows: PostRow[]): Promise<PostCard[]> {
   });
 }
 
+/** Only Travel & Tourism notices take payments (a tour fee or a donation). */
+export const acceptsPayment = (p: { category: PostCategory; paymentMode: PaymentMode }) =>
+  p.category === "travel" && p.paymentMode !== "none";
+
 /** Notice cards per page on the board + admin lists. */
 export const POSTS_PER_PAGE = 9;
 
@@ -187,6 +192,7 @@ export async function latestPosts(limit: number): Promise<PostCard[]> {
 
 /** Full post with its sections and per-section galleries. */
 export async function getPost(id: number): Promise<Post | null> {
+  if (!isDbId(id)) return null;
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(
     `SELECT ${POST_COLS} FROM posts WHERE id = $1`,
@@ -248,9 +254,13 @@ export type NewPost = {
 
 export async function createPost(input: NewPost): Promise<number> {
   await ensureSchema();
+  return withTransaction((db) => insertPost(db, input));
+}
+
+async function insertPost(db: PoolClient, input: NewPost): Promise<number> {
   // A participation post keeps its fee; other modes never carry one.
   const fee = input.paymentMode === "participation" ? input.feeAmount : null;
-  const { rows } = await pool.query<{ id: number }>(
+  const { rows } = await db.query<{ id: number }>(
     `INSERT INTO posts (category, title, body, excerpt, author_id, image_url, pdf_url, payment_mode, fee_amount)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
     [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null, input.pdfUrl, input.paymentMode, fee],
@@ -258,7 +268,7 @@ export async function createPost(input: NewPost): Promise<number> {
   const postId = rows[0].id;
 
   for (let i = 0; i < input.videos.length; i++) {
-    await pool.query(`INSERT INTO post_videos (post_id, url, sort_order) VALUES ($1,$2,$3)`, [
+    await db.query(`INSERT INTO post_videos (post_id, url, sort_order) VALUES ($1,$2,$3)`, [
       postId,
       input.videos[i],
       i,
@@ -266,7 +276,7 @@ export async function createPost(input: NewPost): Promise<number> {
   }
 
   for (let i = 0; i < input.cover.length; i++) {
-    await pool.query(
+    await db.query(
       `INSERT INTO post_images (post_id, url, sort_order, block_id) VALUES ($1,$2,$3,NULL)`,
       [postId, input.cover[i], i],
     );
@@ -274,13 +284,13 @@ export async function createPost(input: NewPost): Promise<number> {
 
   for (let bi = 0; bi < input.blocks.length; bi++) {
     const blk = input.blocks[bi];
-    const { rows: br } = await pool.query<{ id: number }>(
+    const { rows: br } = await db.query<{ id: number }>(
       `INSERT INTO post_blocks (post_id, heading, body, sort_order) VALUES ($1,$2,$3,$4) RETURNING id`,
       [postId, blk.heading || null, blk.body, bi],
     );
     const blockId = br[0].id;
     for (let ii = 0; ii < blk.images.length; ii++) {
-      await pool.query(
+      await db.query(
         `INSERT INTO post_images (post_id, url, sort_order, block_id) VALUES ($1,$2,$3,$4)`,
         [postId, blk.images[ii], ii, blockId],
       );
@@ -309,6 +319,7 @@ export type PostEditData = PostPayment & {
 
 /** A post shaped for the editor: cover + per-section images carry their ids. */
 export async function getPostForEdit(id: number): Promise<PostEditData | null> {
+  if (!isDbId(id)) return null;
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(`SELECT ${POST_COLS} FROM posts WHERE id = $1`, [id]);
   const p = rows[0];
@@ -363,17 +374,22 @@ export type EditPost = {
 
 /** Append image urls to a group (cover = null block, or a section) after its
  * current highest sort_order, so new uploads land after existing ones. */
-async function appendImages(postId: number, blockId: number | null, urls: string[]): Promise<void> {
+async function appendImages(
+  db: PoolClient,
+  postId: number,
+  blockId: number | null,
+  urls: string[],
+): Promise<void> {
   if (urls.length === 0) return;
-  const { rows } = await pool.query<{ max: number | null }>(
-    blockId === null
-      ? `SELECT MAX(sort_order) AS max FROM post_images WHERE post_id = $1 AND block_id IS NULL`
-      : `SELECT MAX(sort_order) AS max FROM post_images WHERE block_id = $2`,
-    blockId === null ? [postId] : [postId, blockId],
+  // IS NOT DISTINCT FROM matches NULL (the cover group) as well as a section id.
+  const { rows } = await db.query<{ max: number | null }>(
+    `SELECT MAX(sort_order) AS max FROM post_images
+     WHERE post_id = $1 AND block_id IS NOT DISTINCT FROM $2::int`,
+    [postId, blockId],
   );
   let order = (rows[0]?.max ?? -1) + 1;
   for (const url of urls) {
-    await pool.query(
+    await db.query(
       `INSERT INTO post_images (post_id, url, sort_order, block_id) VALUES ($1,$2,$3,$4)`,
       [postId, url, order++, blockId],
     );
@@ -382,11 +398,15 @@ async function appendImages(postId: number, blockId: number | null, urls: string
 
 export async function updatePost(id: number, input: EditPost): Promise<void> {
   await ensureSchema();
+  await withTransaction((db) => applyPostEdit(db, id, input));
+}
+
+async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promise<void> {
   const fee = input.paymentMode === "participation" ? input.feeAmount : null;
 
   // Remove images (cover or section) the editor ticked for deletion.
   if (input.removeImageIds.length > 0) {
-    await pool.query(`DELETE FROM post_images WHERE post_id = $1 AND id = ANY($2::int[])`, [
+    await db.query(`DELETE FROM post_images WHERE post_id = $1 AND id = ANY($2::int[])`, [
       id,
       input.removeImageIds,
     ]);
@@ -396,12 +416,12 @@ export async function updatePost(id: number, input: EditPost): Promise<void> {
   // Everything still present keeps its id (and thus its images) through the edit.
   const keepIds = input.blocks.map((b) => b.id).filter((x): x is number => x !== null);
   if (keepIds.length > 0) {
-    await pool.query(`DELETE FROM post_blocks WHERE post_id = $1 AND id <> ALL($2::int[])`, [
+    await db.query(`DELETE FROM post_blocks WHERE post_id = $1 AND id <> ALL($2::int[])`, [
       id,
       keepIds,
     ]);
   } else {
-    await pool.query(`DELETE FROM post_blocks WHERE post_id = $1`, [id]);
+    await db.query(`DELETE FROM post_blocks WHERE post_id = $1`, [id]);
   }
 
   // Upsert each surviving/new section in display order, then append its uploads.
@@ -409,45 +429,45 @@ export async function updatePost(id: number, input: EditPost): Promise<void> {
     const b = input.blocks[i];
     let blockId: number;
     if (b.id !== null) {
-      await pool.query(
+      await db.query(
         `UPDATE post_blocks SET heading=$2, body=$3, sort_order=$4 WHERE id=$1 AND post_id=$5`,
         [b.id, b.heading || null, b.body, i, id],
       );
       blockId = b.id;
     } else {
-      const { rows: br } = await pool.query<{ id: number }>(
+      const { rows: br } = await db.query<{ id: number }>(
         `INSERT INTO post_blocks (post_id, heading, body, sort_order) VALUES ($1,$2,$3,$4) RETURNING id`,
         [id, b.heading || null, b.body, i],
       );
       blockId = br[0].id;
     }
-    await appendImages(id, blockId, b.newImages);
+    await appendImages(db, id, blockId, b.newImages);
   }
 
   // Append newly uploaded cover photos after the existing ones.
-  await appendImages(id, null, input.newCover);
+  await appendImages(db, id, null, input.newCover);
 
   // PDF: replace if a new one was uploaded, else clear if removed, else keep.
   if (input.newPdfUrl) {
-    await pool.query(`UPDATE posts SET pdf_url = $2 WHERE id = $1`, [id, input.newPdfUrl]);
+    await db.query(`UPDATE posts SET pdf_url = $2 WHERE id = $1`, [id, input.newPdfUrl]);
   } else if (input.removePdf) {
-    await pool.query(`UPDATE posts SET pdf_url = NULL WHERE id = $1`, [id]);
+    await db.query(`UPDATE posts SET pdf_url = NULL WHERE id = $1`, [id]);
   }
 
   // Core fields + the card thumbnail (first remaining cover image).
-  const { rows: firstImg } = await pool.query<{ url: string }>(
+  const { rows: firstImg } = await db.query<{ url: string }>(
     `SELECT url FROM post_images WHERE post_id = $1 AND block_id IS NULL ORDER BY sort_order, id LIMIT 1`,
     [id],
   );
-  await pool.query(
+  await db.query(
     `UPDATE posts SET category=$2, title=$3, excerpt=$4, image_url=$5, payment_mode=$6, fee_amount=$7 WHERE id=$1`,
     [id, input.category, input.title, input.excerpt, firstImg[0]?.url ?? null, input.paymentMode, fee],
   );
 
   // Replace video links.
-  await pool.query(`DELETE FROM post_videos WHERE post_id = $1`, [id]);
+  await db.query(`DELETE FROM post_videos WHERE post_id = $1`, [id]);
   for (let i = 0; i < input.videos.length; i++) {
-    await pool.query(`INSERT INTO post_videos (post_id, url, sort_order) VALUES ($1,$2,$3)`, [
+    await db.query(`INSERT INTO post_videos (post_id, url, sort_order) VALUES ($1,$2,$3)`, [
       id,
       input.videos[i],
       i,
@@ -535,11 +555,18 @@ export async function getUserVotes(pollIds: number[], userId: number): Promise<R
   return Object.fromEntries(rows.map((r) => [r.poll_id, r.option_id]));
 }
 
-/** One vote per user per poll; ignores duplicates. */
+/**
+ * One vote per user per poll; ignores duplicates. The option must belong to that
+ * poll and the poll must still be open — anything else is silently dropped.
+ */
 export async function castVote(pollId: number, optionId: number, userId: number): Promise<void> {
+  if (!isDbId(pollId) || !isDbId(optionId)) return;
   await ensureSchema();
   await pool.query(
-    `INSERT INTO poll_votes (poll_id, option_id, user_id) VALUES ($1,$2,$3)
+    `INSERT INTO poll_votes (poll_id, option_id, user_id)
+     SELECT o.poll_id, o.id, $3
+     FROM poll_options o JOIN polls p ON p.id = o.poll_id
+     WHERE o.id = $2 AND o.poll_id = $1 AND p.active
      ON CONFLICT (poll_id, user_id) DO NOTHING`,
     [pollId, optionId, userId],
   );
@@ -549,14 +576,16 @@ export async function createPoll(question: string, options: string[]): Promise<v
   await ensureSchema();
   // Creating a new poll closes the current one — but the closed poll and its
   // votes are kept, and its results stay viewable in the archive.
-  await pool.query(`UPDATE polls SET active = false WHERE active = true`);
-  const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO polls (question) VALUES ($1) RETURNING id`,
-    [question],
-  );
-  for (const label of options) {
-    await pool.query(`INSERT INTO poll_options (poll_id, label) VALUES ($1,$2)`, [rows[0].id, label]);
-  }
+  await withTransaction(async (db) => {
+    await db.query(`UPDATE polls SET active = false WHERE active = true`);
+    const { rows } = await db.query<{ id: number }>(
+      `INSERT INTO polls (question) VALUES ($1) RETURNING id`,
+      [question],
+    );
+    for (const label of options) {
+      await db.query(`INSERT INTO poll_options (poll_id, label) VALUES ($1,$2)`, [rows[0].id, label]);
+    }
+  });
 }
 
 /** Close the currently-open poll without starting a new one. */
@@ -568,8 +597,11 @@ export async function closePoll(id: number): Promise<void> {
 /** Reopen a closed poll, closing any other open poll first. */
 export async function reopenPoll(id: number): Promise<void> {
   await ensureSchema();
-  await pool.query(`UPDATE polls SET active = false WHERE active = true`);
-  await pool.query(`UPDATE polls SET active = true WHERE id = $1`, [id]);
+  if (!isDbId(id)) return;
+  await withTransaction(async (db) => {
+    await db.query(`UPDATE polls SET active = false WHERE active = true`);
+    await db.query(`UPDATE polls SET active = true WHERE id = $1`, [id]);
+  });
 }
 
 /** Permanently delete a poll and its votes. */

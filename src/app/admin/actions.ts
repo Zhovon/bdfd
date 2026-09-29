@@ -6,11 +6,14 @@ import {
   setUserStatus,
   setUserRole,
   deleteUser,
+  isDbId,
+  parseId,
   type UserRole,
   type UserStatus,
 } from "@/lib/db";
 import {
   createPost,
+  getPost,
   updatePost,
   deletePost,
   createPoll,
@@ -29,23 +32,33 @@ import { getModule } from "@/lib/site";
 
 const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim() : "");
 
+/** Largest fee the NUMERIC(12,2) column holds comfortably. */
+const MAX_AMOUNT = 1_000_000_000;
+/** Upper bound on sections per post, whatever the form claims. */
+const MAX_BLOCKS = 50;
+
 /* ------------------------------ Membership ------------------------------ */
 
-async function changeStatus(id: number, status: UserStatus) {
-  await requireAdmin();
-  const user = await getUserById(id);
-  if (!user) return;
-  await setUserStatus(id, status);
-  if (status === "approved") {
+async function changeStatus(rawId: FormDataEntryValue | null, status: UserStatus) {
+  const admin = await requireAdmin();
+  const id = parseId(rawId);
+  const user = id ? await getUserById(id) : null;
+  // Admin accounts (including your own) can't be blocked or rejected from here.
+  if (!user || user.id === admin.id || (user.role === "admin" && status !== "approved")) return;
+  if (user.status === status) return;
+  const firstApproval = user.approved_at === null;
+  await setUserStatus(user.id, status);
+  // The welcome email/notification is for a first approval — not for unblocking.
+  if (status === "approved" && firstApproval) {
     const { subject, text } = approvalEmail(user.full_name);
     await sendMail(user.official_email, subject, text);
-    await notifyUser(id, {
+    await notifyUser(user.id, {
       type: "account",
       title: "Your account is approved",
       body: "Welcome — you now have full access to the members' area.",
       link: "/portal",
     });
-  } else if (status === "rejected") {
+  } else if (status === "rejected" && firstApproval) {
     const { subject, text } = rejectionEmail(user.full_name);
     await sendMail(user.official_email, subject, text);
   }
@@ -53,31 +66,34 @@ async function changeStatus(id: number, status: UserStatus) {
 }
 
 export async function approveUser(formData: FormData) {
-  await changeStatus(Number(formData.get("id")), "approved");
+  await changeStatus(formData.get("id"), "approved");
 }
 export async function rejectUser(formData: FormData) {
-  await changeStatus(Number(formData.get("id")), "rejected");
+  await changeStatus(formData.get("id"), "rejected");
 }
 export async function blockUser(formData: FormData) {
-  await changeStatus(Number(formData.get("id")), "blocked");
+  await changeStatus(formData.get("id"), "blocked");
 }
 export async function unblockUser(formData: FormData) {
-  await changeStatus(Number(formData.get("id")), "approved");
+  await changeStatus(formData.get("id"), "approved");
 }
 
 export async function setRole(formData: FormData) {
-  await requireAdmin();
-  const id = Number(formData.get("id"));
+  const admin = await requireAdmin();
+  const id = parseId(formData.get("id"));
   const role = str(formData.get("role")) as UserRole;
-  if (["member", "moderator", "admin"].includes(role)) {
+  // Changing your own role could lock the last admin out of the panel.
+  if (id && id !== admin.id && ["member", "moderator", "admin"].includes(role)) {
     await setUserRole(id, role);
     revalidatePath("/admin");
   }
 }
 
 export async function removeUser(formData: FormData) {
-  await requireAdmin();
-  await deleteUser(Number(formData.get("id")));
+  const admin = await requireAdmin();
+  const id = parseId(formData.get("id"));
+  if (!id || id === admin.id) return;
+  await deleteUser(id);
   revalidatePath("/admin");
 }
 
@@ -103,7 +119,7 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   let feeAmount: number | null = null;
   if (paymentMode === "participation") {
     feeAmount = Number(str(formData.get("feeAmount")));
-    if (!Number.isFinite(feeAmount) || feeAmount <= 0)
+    if (!Number.isFinite(feeAmount) || feeAmount <= 0 || feeAmount > MAX_AMOUNT)
       return { ok: false, message: "Enter a participation fee greater than zero." };
   }
 
@@ -126,7 +142,7 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   }
 
   // Repeatable sections: block-heading-i / block-body-i / block-images-i.
-  const blockCount = Number(str(formData.get("blockCount"))) || 0;
+  const blockCount = Math.min(Number(str(formData.get("blockCount"))) || 0, MAX_BLOCKS);
   const blocks: { heading: string; body: string; images: string[] }[] = [];
   for (let i = 0; i < blockCount; i++) {
     const heading = str(formData.get(`block-heading-${i}`));
@@ -150,8 +166,8 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
 
 export async function editPost(_prev: PostFormState, formData: FormData): Promise<PostFormState> {
   await requireStaff();
-  const id = Number(formData.get("id"));
-  if (!Number.isInteger(id) || id <= 0) return { ok: false, message: "Unknown post." };
+  const id = parseId(formData.get("id"));
+  if (!id || !(await getPost(id))) return { ok: false, message: "Unknown post." };
 
   const category = str(formData.get("category")) as PostCategory;
   const title = str(formData.get("title"));
@@ -168,7 +184,7 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
   let feeAmount: number | null = null;
   if (paymentMode === "participation") {
     feeAmount = Number(str(formData.get("feeAmount")));
-    if (!Number.isFinite(feeAmount) || feeAmount <= 0)
+    if (!Number.isFinite(feeAmount) || feeAmount <= 0 || feeAmount > MAX_AMOUNT)
       return { ok: false, message: "Enter a participation fee greater than zero." };
   }
 
@@ -183,7 +199,7 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
   const removeImageIds = formData
     .getAll("removeImage")
     .map((v) => Number(v))
-    .filter((n) => Number.isInteger(n));
+    .filter(isDbId);
   const removePdf = formData.get("removePdf") === "on";
   let newPdfUrl: string | null = null;
   try {
@@ -192,11 +208,10 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
     return { ok: false, message: err instanceof Error ? err.message : "Couldn't upload the PDF." };
   }
 
-  const blockCount = Number(str(formData.get("blockCount"))) || 0;
+  const blockCount = Math.min(Number(str(formData.get("blockCount"))) || 0, MAX_BLOCKS);
   const blocks: { id: number | null; heading: string; body: string; newImages: string[] }[] = [];
   for (let i = 0; i < blockCount; i++) {
-    const rawId = Number(str(formData.get(`block-id-${i}`)));
-    const blockId = Number.isInteger(rawId) && rawId > 0 ? rawId : null;
+    const blockId = parseId(formData.get(`block-id-${i}`));
     const heading = str(formData.get(`block-heading-${i}`));
     const body = str(formData.get(`block-body-${i}`));
     const newImages = await saveUploads(formData.getAll(`block-images-${i}`), `post-${id}-${stamp}-b${i}`);
@@ -228,7 +243,8 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
 
 export async function removePost(formData: FormData) {
   await requireStaff();
-  await deletePost(Number(formData.get("id")));
+  const id = parseId(formData.get("id"));
+  if (id) await deletePost(id);
   revalidatePath("/admin/content");
 }
 
@@ -248,29 +264,35 @@ export async function addPoll(formData: FormData) {
 
 export async function closePollAction(formData: FormData) {
   await requireStaff();
-  await closePoll(Number(formData.get("id")));
+  const id = parseId(formData.get("id"));
+  if (id) await closePoll(id);
   revalidatePath("/admin/polls");
 }
 
 export async function reopenPollAction(formData: FormData) {
   await requireStaff();
-  await reopenPoll(Number(formData.get("id")));
+  const id = parseId(formData.get("id"));
+  if (id) await reopenPoll(id);
   revalidatePath("/admin/polls");
 }
 
 export async function deletePollAction(formData: FormData) {
   await requireStaff();
-  await deletePoll(Number(formData.get("id")));
+  const id = parseId(formData.get("id"));
+  if (id) await deletePoll(id);
   revalidatePath("/admin/polls");
 }
 
 /* ------------------------------- Donations ------------------------------ */
 
-async function setDonation(id: number, status: DonationStatus) {
+async function setDonation(rawId: FormDataEntryValue | null, status: DonationStatus) {
   await requireStaff();
-  const donation = await getDonation(id);
-  await setDonationStatus(id, status);
-  if (donation?.user_id) {
+  const id = parseId(rawId);
+  const donation = id ? await getDonation(id) : null;
+  if (!donation) return;
+  // Only a still-'reported' row changes, and only then is the member notified.
+  const changed = await setDonationStatus(donation.id, status);
+  if (changed && donation.user_id) {
     const taka = `৳ ${Number(donation.amount).toLocaleString("en-BD")}`;
     const isTour = donation.kind === "participation";
     const noun = isTour ? "participation payment" : "contribution";
@@ -285,21 +307,26 @@ async function setDonation(id: number, status: DonationStatus) {
   revalidatePath("/admin/donations");
 }
 export async function verifyDonation(formData: FormData) {
-  await setDonation(Number(formData.get("id")), "verified");
+  await setDonation(formData.get("id"), "verified");
 }
 export async function rejectDonation(formData: FormData) {
-  await setDonation(Number(formData.get("id")), "rejected");
+  await setDonation(formData.get("id"), "rejected");
 }
 
 /* ------------------------------- Payments ------------------------------- */
 
 export async function savePaymentMethod(formData: FormData) {
   await requireAdmin();
-  const id = Number(formData.get("id"));
+  const id = parseId(formData.get("id"));
+  const label = str(formData.get("label"));
+  const accountName = str(formData.get("account_name"));
+  const accountNumber = str(formData.get("account_number"));
+  // Members pay to whatever is shown here — never save a blank account.
+  if (!id || !label || !accountName || !accountNumber) return;
   await updatePaymentMethod(id, {
-    label: str(formData.get("label")),
-    account_name: str(formData.get("account_name")),
-    account_number: str(formData.get("account_number")),
+    label,
+    account_name: accountName,
+    account_number: accountNumber,
     instructions: str(formData.get("instructions")),
     active: formData.get("active") === "on",
   });

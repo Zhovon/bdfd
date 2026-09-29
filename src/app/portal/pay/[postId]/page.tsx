@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import PaymentForm from "@/components/PaymentForm";
 import { requireUser } from "@/lib/session";
-import { getPost } from "@/lib/content";
+import { acceptsPayment, getPost } from "@/lib/content";
 import { listPaymentMethods, postTotals } from "@/lib/payments";
 
 const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
@@ -13,7 +13,7 @@ export default async function PayPage({ params }: { params: Promise<{ postId: st
   const post = await getPost(Number(postId));
   if (!post) notFound();
   // Nothing to pay on an informational notice — send the reader back to it.
-  if (post.paymentMode === "none") redirect(`/portal/notice/${post.id}`);
+  if (!acceptsPayment(post)) redirect(`/portal/notice/${post.id}`);
 
   const isTour = post.paymentMode === "participation";
   const [methods, totals] = await Promise.all([listPaymentMethods(true), postTotals(post.id)]);

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import PostMedia from "@/components/PostMedia";
 import PaymentCTA from "@/components/PaymentCTA";
 import { requireUser } from "@/lib/session";
-import { getPost } from "@/lib/content";
+import { acceptsPayment, getPost } from "@/lib/content";
 import { postTotals } from "@/lib/payments";
 import { categoryMeta } from "@/lib/site";
 import { getDict } from "@/lib/i18n";
@@ -20,7 +20,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id: str
 
   const board = t.boards[post.category as keyof typeof t.boards];
   const meta = categoryMeta(post.category);
-  const totals = post.paymentMode === "none" ? null : await postTotals(post.id);
+  const totals = acceptsPayment(post) ? await postTotals(post.id) : null;
 
   // The cover gallery (plus any videos) sits between the title and the body;
   // section-specific photos render inline with their own section below.

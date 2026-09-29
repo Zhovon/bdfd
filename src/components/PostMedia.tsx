@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "./I18nProvider";
+
+const noopSubscribe = () => () => {};
 
 type Item = { kind: "image" | "video"; src: string };
 
@@ -50,9 +52,8 @@ export default function PostMedia({
   ];
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // True only in the browser (portals need document.body); false during SSR.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   const show = useCallback((i: number) => {
     setIndex(i);

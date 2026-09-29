@@ -1,5 +1,5 @@
 import "server-only";
-import { pool, ensureSchema } from "@/lib/db";
+import { pool, ensureSchema, isDbId } from "@/lib/db";
 
 export type PaymentMethod = {
   id: number;
@@ -96,14 +96,25 @@ export async function listDonations(status?: DonationStatus): Promise<Donation[]
 }
 
 export async function getDonation(id: number): Promise<Donation | null> {
+  if (!isDbId(id)) return null;
   await ensureSchema();
   const { rows } = await pool.query<Donation>(`SELECT * FROM donations WHERE id = $1`, [id]);
   return rows[0] ?? null;
 }
 
-export async function setDonationStatus(id: number, status: DonationStatus): Promise<void> {
+/**
+ * Verify or reject a reported contribution. Only a 'reported' row can change, so
+ * a double click or a stale page can't flip a decision or re-notify the member.
+ * Returns whether the row changed.
+ */
+export async function setDonationStatus(id: number, status: DonationStatus): Promise<boolean> {
+  if (!isDbId(id)) return false;
   await ensureSchema();
-  await pool.query(`UPDATE donations SET status = $2 WHERE id = $1`, [id, status]);
+  const { rowCount } = await pool.query(
+    `UPDATE donations SET status = $2 WHERE id = $1 AND status = 'reported'`,
+    [id, status],
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 export type ContributionTotals = { verified: number; reported: number; count: number };

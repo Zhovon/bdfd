@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
-import { castVote, getPost } from "@/lib/content";
+import { acceptsPayment, castVote, getPost } from "@/lib/content";
 import { createDonation, type ContributionKind } from "@/lib/payments";
-import { updateProfile } from "@/lib/db";
+import { parseId, updateProfile } from "@/lib/db";
 import { saveUpload } from "@/lib/uploads";
 import { markAllRead } from "@/lib/notifications";
 
@@ -20,9 +20,9 @@ export async function markNotificationsRead(): Promise<void> {
 
 export async function castVoteAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const pollId = Number(formData.get("pollId"));
-  const optionId = Number(formData.get("optionId"));
-  if (Number.isInteger(pollId) && Number.isInteger(optionId)) {
+  const pollId = parseId(formData.get("pollId"));
+  const optionId = parseId(formData.get("optionId"));
+  if (pollId && optionId) {
     await castVote(pollId, optionId, user.id);
     revalidatePath("/portal/travel");
   }
@@ -37,11 +37,10 @@ export async function reportDonation(_prev: DonationState, formData: FormData): 
 
   // Every payment is made against a post; the post is the source of truth for
   // what kind of payment this is and — for a tour — how much it costs.
-  const postId = Number(formData.get("postId"));
-  if (!Number.isInteger(postId) || postId <= 0)
-    return { ok: false, message: "We couldn't tell which notice this payment is for." };
+  const postId = parseId(formData.get("postId"));
+  if (!postId) return { ok: false, message: "We couldn't tell which notice this payment is for." };
   const post = await getPost(postId);
-  if (!post || post.paymentMode === "none")
+  if (!post || !acceptsPayment(post))
     return { ok: false, message: "This notice isn't accepting payments." };
   if (!post.paymentOpen)
     return { ok: false, message: "Payments for this notice are now closed." };
@@ -55,7 +54,8 @@ export async function reportDonation(_prev: DonationState, formData: FormData): 
   // a donation is whatever the member chose to give.
   const amount = kind === "participation" ? post.feeAmount ?? 0 : Number(str(formData.get("amount")));
 
-  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: "Enter a valid amount." };
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000)
+    return { ok: false, message: "Enter a valid amount." };
   if (!method) return { ok: false, message: "Choose how you paid." };
   if (!transactionRef) return { ok: false, message: "Enter the transaction ID / reference." };
 

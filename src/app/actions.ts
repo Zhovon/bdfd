@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createUser, EmailTakenError, getUserByEmail, setPassword } from "@/lib/db";
+import { createUser, EmailTakenError, getUserByEmail, getUserById, setPassword } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setSession, clearSession, makeResetToken, verifyResetToken } from "@/lib/session";
 import { sendMail, resetEmail } from "@/lib/mailer";
@@ -102,7 +102,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (user.status === "rejected") return { error: "Your registration was not approved. Contact the administration." };
   if (user.status === "blocked") return { error: "This account has been blocked. Contact the administration." };
 
-  await setSession(user.id);
+  await setSession(user.id, user.session_version);
   redirect(user.role === "member" ? "/portal" : "/admin");
 }
 
@@ -122,7 +122,7 @@ export async function requestPasswordReset(_prev: ForgotState, formData: FormDat
   // Only send for real, approved accounts — but always show the same message.
   if (user && user.status === "approved") {
     const base = process.env.APP_URL ?? "http://localhost:3000";
-    const url = `${base}/reset?token=${makeResetToken(user.id)}`;
+    const url = `${base}/reset?token=${makeResetToken(user.id, user.session_version)}`;
     const { subject, text } = resetEmail(user.full_name, url);
     await sendMail(user.official_email, subject, text);
   }
@@ -140,11 +140,17 @@ export async function resetPassword(_prev: ResetState, formData: FormData): Prom
   const password = str(formData.get("password"));
   const confirm = str(formData.get("confirm"));
 
-  const userId = verifyResetToken(token);
-  if (userId == null) return { error: "This reset link is invalid or has expired. Request a new one." };
+  const invalid = { error: "This reset link is invalid or has expired. Request a new one." };
+  const reset = verifyResetToken(token);
+  if (!reset) return invalid;
   if (password.length < 8) return { error: "Use at least 8 characters." };
   if (password !== confirm) return { error: "Passwords don't match." };
 
-  await setPassword(userId, await hashPassword(password));
+  // The link is single-use: it must still match the account's current version,
+  // and the account must still be approved.
+  const user = await getUserById(reset.id);
+  if (!user || user.status !== "approved" || user.session_version !== reset.version) return invalid;
+
+  if (!(await setPassword(user.id, await hashPassword(password), reset.version))) return invalid;
   redirect("/login?reset=1");
 }

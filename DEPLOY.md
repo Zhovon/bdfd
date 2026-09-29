@@ -175,7 +175,7 @@ Test a restore once so you know it works.
 ## App-specific notes
 
 - **Images must use R2.** The container filesystem is ephemeral — it's wiped on every
-  redeploy. With the `R2_*` vars set, uploads go to R2 and persist; unset, they fall back
+  redeploy. With the `S3_*` vars set (pointing at R2), uploads go to R2 and persist; unset, they fall back
   to container disk and would vanish on the next deploy.
 - **Database.** `DATABASE_URL` points at the Coolify-managed Postgres container (persistent
   volume). Because the app is a long-running Node process (not serverless), the `pg` pool

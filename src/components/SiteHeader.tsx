@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Brand from "@/components/Brand";
@@ -8,16 +8,17 @@ import LangToggle from "@/components/LangToggle";
 import { useI18n } from "@/components/I18nProvider";
 import { modules } from "@/lib/site";
 
+const noopSubscribe = () => () => {};
+
 type Props = { authed?: boolean; isAdmin?: boolean };
 
 export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // True only in the browser (portals need document.body); false during SSR.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   // Logged-in visitors get links into the members' area; anonymous ones to login.
   const moduleHref = (slug: string) => (authed ? `/portal/${slug}` : "/login");
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

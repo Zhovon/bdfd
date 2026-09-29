@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { PostCard } from "@/lib/content";
+import { acceptsPayment, type PostCard } from "@/lib/content";
 import { categoryMeta } from "@/lib/site";
 import { getDict, type Dict } from "@/lib/i18n";
 
@@ -40,7 +40,7 @@ export default async function PostBoard({
     <div className="grid gap-4 sm:grid-cols-2">
       {posts.map((p) => {
         const meta = categoryMeta(p.category);
-        const hasPayment = p.paymentMode !== "none";
+        const hasPayment = acceptsPayment(p);
         return (
           // The whole card links to the notice via a stretched link on the title;
           // the payment button sits above it (z-10) with its own destination.

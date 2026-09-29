@@ -54,7 +54,7 @@ export default async function AdminDonations() {
                         d.kind === "participation" ? "bg-brand/10 text-brand" : "bg-grain/10 text-grain"
                       }`}
                     >
-                      {d.kind === "participation" ? "Tour" : "Welfare"}
+                      {d.kind === "participation" ? "Tour fee" : "Donation"}
                     </span>
                     {d.post_title && <span className="mt-1 block text-stone">{d.post_title}</span>}
                   </td>
