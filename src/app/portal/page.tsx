@@ -11,7 +11,7 @@ const rel = (d: Date, t: Dict) => {
   if (days <= 0) return t.dashboard.today;
   if (days === 1) return t.dashboard.yesterday;
   if (days < 7) return `${days} ${t.dashboard.daysAgo}`;
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(d));
+  return new Intl.DateTimeFormat(t.intl, { day: "2-digit", month: "short" }).format(new Date(d));
 };
 
 export default async function PortalDashboard() {
@@ -50,7 +50,7 @@ export default async function PortalDashboard() {
         </span>
         <div>
           <p className="log-label text-brand">
-            {t.dashboard.memberDashboard} · <span className="capitalize">{user?.role}</span>
+            {t.dashboard.memberDashboard} · {user ? t.adminUi.roles[user.role] : ""}
           </p>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
             {t.dashboard.welcome}, {firstName}

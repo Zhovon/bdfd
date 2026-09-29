@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 
 type Props = Omit<React.ComponentPropsWithoutRef<"input">, "type" | "className">;
 
@@ -10,6 +11,7 @@ type Props = Omit<React.ComponentPropsWithoutRef<"input">, "type" | "className">
  */
 export default function PasswordInput(props: Props) {
   const [show, setShow] = useState(false);
+  const { t } = useI18n();
   return (
     <div className="mt-2 flex items-center border-b-2 border-line transition-colors focus-within:border-brand">
       <input
@@ -20,7 +22,7 @@ export default function PasswordInput(props: Props) {
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        aria-label={show ? "Hide password" : "Show password"}
+        aria-label={show ? t.password.hide : t.password.show}
         aria-pressed={show}
         className="shrink-0 pb-2 pl-3 text-stone transition-colors hover:text-field"
       >

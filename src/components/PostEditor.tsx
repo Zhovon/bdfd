@@ -1,20 +1,16 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { addPost, editPost, type PostFormState } from "@/app/admin/actions";
+import { useI18n } from "@/components/I18nProvider";
 
-const categories = [
-  { value: "travel", label: "Travel & Tourism" },
-  { value: "welfare", label: "Welfare" },
-  { value: "condolence", label: "Condolence & Support" },
-  { value: "association", label: "Association Information" },
-];
+const categories = ["travel", "welfare", "condolence", "association"] as const;
 
 const paymentModes = [
-  { value: "none", label: "No payment — informational notice" },
-  { value: "participation", label: "Participation — a fixed fee to join (e.g. a tour)" },
-  { value: "donation", label: "Donation — open amount, payer chooses" },
-];
+  { value: "none", label: "payModeNone" },
+  { value: "participation", label: "payModeParticipation" },
+  { value: "donation", label: "payModeDonation" },
+] as const;
 
 const fileInput =
   "mt-2 block w-full text-sm text-stone file:mr-3 file:rounded-full file:border-0 file:bg-field file:px-4 file:py-2 file:text-sm file:font-semibold file:text-husk";
@@ -41,6 +37,8 @@ type Section = { key: number; id: number | null; heading: string; body: string; 
 
 export default function PostEditor({ initial }: { initial?: EditInitial }) {
   const editing = Boolean(initial);
+  const { t } = useI18n();
+  const e = t.editor;
   const [state, formAction, pending] = useActionState<PostFormState, FormData>(
     editing ? editPost : addPost,
     null,
@@ -57,29 +55,31 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
     })) ?? [],
   );
   const nextKey = useRef((initial?.blocks.length ?? 0) + 1);
-  const formRef = useRef<HTMLFormElement>(null);
 
   const addSection = () =>
     setSections((s) => [...s, { key: nextKey.current++, id: null, heading: "", body: "", images: [] }]);
   const removeSection = (key: number) => setSections((s) => s.filter((x) => x.key !== key));
 
   // Reset a fresh post after a successful publish (but keep an edited one).
-  useEffect(() => {
+  // React resets the uncontrolled fields itself; this clears the controlled ones,
+  // adjusting state during render when a new result arrives.
+  const [handled, setHandled] = useState(state);
+  if (state !== handled) {
+    setHandled(state);
     if (state?.ok && !editing) {
-      formRef.current?.reset();
       setSections([]);
       setPaymentMode("none");
       setCategory("travel");
     }
-  }, [state, editing]);
+  }
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-5">
+    <form action={formAction} className="grid gap-5">
       <input type="hidden" name="blockCount" value={sections.length} />
       {initial && <input type="hidden" name="id" value={initial.id} />}
 
       <label>
-        <span className="log-label text-field">Board</span>
+        <span className="log-label text-field">{e.board}</span>
         <select
           name="category"
           required
@@ -88,33 +88,33 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
           className={textInput}
         >
           {categories.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
+            <option key={c} value={c}>
+              {t.boards[c].title}
             </option>
           ))}
         </select>
       </label>
 
       <label>
-        <span className="log-label text-field">Title</span>
+        <span className="log-label text-field">{e.title}</span>
         <input
           name="title"
           required
           defaultValue={initial?.title}
-          placeholder="Cox's Bazar tour — 3 days"
+          placeholder={t.placeholders.title}
           className={textInput}
         />
       </label>
 
       <label>
         <span className="log-label flex items-center gap-2 text-field">
-          Summary <span className="text-stone">· shown on the card</span>
+          {e.summary} <span className="text-stone">· {e.summaryHint}</span>
         </span>
         <textarea
           name="excerpt"
           rows={2}
           defaultValue={initial?.excerpt}
-          placeholder="A short line that appears in the notice list."
+          placeholder={t.placeholders.summary}
           className={textInput}
         />
       </label>
@@ -123,23 +123,28 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
       {editing && initial!.cover.length > 0 && (
         <div>
           <span className="log-label flex items-center gap-2 text-field">
-            Current cover photos <span className="text-stone">· tick to remove</span>
+            {e.currentCover} <span className="text-stone">· {e.tickToRemove}</span>
           </span>
-          <PhotoGrid photos={initial!.cover} />
+          <PhotoGrid photos={initial!.cover} removeLabel={t.common.remove} />
         </div>
       )}
 
       <label>
         <span className="log-label flex items-center gap-2 text-field">
-          {editing ? "Add cover photos" : "Cover photos"}{" "}
-          <span className="text-stone">· optional · first one is the main image</span>
+          {editing ? e.addCoverPhotos : e.coverPhotos}{" "}
+          <span className="text-stone">
+            · {t.common.optional} · {e.coverHint}
+          </span>
         </span>
         <input name="cover" type="file" accept="image/*" multiple className={fileInput} />
       </label>
 
       <label>
         <span className="log-label flex items-center gap-2 text-field">
-          Video links <span className="text-stone">· optional · one per line (YouTube, Vimeo, Facebook)</span>
+          {e.videoLinks}{" "}
+          <span className="text-stone">
+            · {t.common.optional} · {e.videoHint}
+          </span>
         </span>
         <textarea
           name="videos"
@@ -152,7 +157,10 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
 
       <label>
         <span className="log-label flex items-center gap-2 text-field">
-          Programme PDF <span className="text-stone">· optional · shown after the text</span>
+          {e.programmePdf}{" "}
+          <span className="text-stone">
+            · {t.common.optional} · {e.pdfHint}
+          </span>
         </span>
         <input name="pdf" type="file" accept="application/pdf" className={fileInput} />
       </label>
@@ -166,13 +174,13 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
               rel="noopener noreferrer"
               className="text-sm text-brand underline"
             >
-              View current PDF
+              {e.viewCurrentPdf}
             </a>
             <label className="flex items-center gap-2 text-sm text-stone">
               <input type="checkbox" name="removePdf" className="h-4 w-4 accent-[var(--grain)]" />
-              Remove it
+              {e.removeIt}
             </label>
-            <span className="text-xs text-stone">Upload a new PDF above to replace it.</span>
+            <span className="text-xs text-stone">{e.replacePdf}</span>
           </div>
         </div>
       )}
@@ -180,9 +188,9 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
       {/* Payment intent — only Travel & Tourism posts can carry a payment */}
       {category === "travel" && (
       <fieldset className="rounded-lg border border-line p-4">
-        <legend className="log-label px-2 text-brand">Payment</legend>
+        <legend className="log-label px-2 text-brand">{e.payment}</legend>
         <label className="block">
-          <span className="log-label text-field">Mode</span>
+          <span className="log-label text-field">{e.mode}</span>
           <select
             name="paymentMode"
             value={paymentMode}
@@ -191,7 +199,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
           >
             {paymentModes.map((m) => (
               <option key={m.value} value={m.value}>
-                {m.label}
+                {e[m.label]}
               </option>
             ))}
           </select>
@@ -199,7 +207,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
         {paymentMode === "participation" && (
           <label className="mt-3 block">
             <span className="log-label flex items-center gap-2 text-field">
-              Fee per person <span className="text-stone">· BDT</span>
+              {e.fee} <span className="text-stone">· BDT</span>
             </span>
             <input
               name="feeAmount"
@@ -214,9 +222,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
           </label>
         )}
         {paymentMode === "donation" && (
-          <p className="mt-3 text-sm text-stone">
-            Members will choose their own amount when they contribute.
-          </p>
+          <p className="mt-3 text-sm text-stone">{t.payments.chooseAmount}</p>
         )}
       </fieldset>
       )}
@@ -225,19 +231,21 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
       <div className="grid gap-4">
         {sections.map((s, i) => (
           <fieldset key={s.key} className="rounded-lg border border-line p-4">
-            <legend className="log-label px-2 text-brand">Section {i + 1}</legend>
+            <legend className="log-label px-2 text-brand">
+              {e.section} {i + 1}
+            </legend>
             {s.id !== null && <input type="hidden" name={`block-id-${i}`} value={s.id} />}
             <label className="block">
-              <span className="log-label text-field">Heading</span>
+              <span className="log-label text-field">{e.heading}</span>
               <input
                 name={`block-heading-${i}`}
                 defaultValue={s.heading}
-                placeholder="Day 1 — Arrival & beach"
+                placeholder={t.placeholders.heading}
                 className={textInput}
               />
             </label>
             <label className="mt-3 block">
-              <span className="log-label text-field">Text</span>
+              <span className="log-label text-field">{e.text}</span>
               <textarea
                 name={`block-body-${i}`}
                 defaultValue={s.body}
@@ -248,14 +256,14 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
             {s.images.length > 0 && (
               <div className="mt-3">
                 <span className="log-label flex items-center gap-2 text-field">
-                  Section photos <span className="text-stone">· tick to remove</span>
+                  {e.sectionPhotos} <span className="text-stone">· {e.tickToRemove}</span>
                 </span>
-                <PhotoGrid photos={s.images} />
+                <PhotoGrid photos={s.images} removeLabel={t.common.remove} />
               </div>
             )}
             <label className="mt-3 block">
               <span className="log-label flex items-center gap-2 text-field">
-                Add section photos <span className="text-stone">· optional · shown with this section</span>
+                {e.addSectionPhotos} <span className="text-stone">· {t.common.optional}</span>
               </span>
               <input name={`block-images-${i}`} type="file" accept="image/*" multiple className={fileInput} />
             </label>
@@ -264,7 +272,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
               onClick={() => removeSection(s.key)}
               className="log-label mt-3 text-stone hover:text-grain hover:underline"
             >
-              Remove section
+              {e.removeSection}
             </button>
           </fieldset>
         ))}
@@ -275,7 +283,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
         onClick={addSection}
         className="justify-self-start rounded-full border border-field/30 px-5 py-2.5 text-sm font-semibold text-field transition-colors hover:bg-field hover:text-husk"
       >
-        + Add section
+        {e.addSection}
       </button>
 
       <div className="flex items-center gap-4">
@@ -284,7 +292,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
           disabled={pending}
           className="rounded-full bg-brand px-7 py-3 font-semibold text-husk transition-transform hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {pending ? "Saving…" : editing ? "Save changes" : "Publish notice"}
+          {pending ? t.common.saving : editing ? e.saveChanges : e.publish}
         </button>
         {state && (
           <span className={`text-sm ${state.ok ? "text-brand" : "text-grain"}`}>{state.message}</span>
@@ -295,7 +303,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
 }
 
 /** Existing photos, each with a tick-to-remove overlay (posts by image id). */
-function PhotoGrid({ photos }: { photos: Photo[] }) {
+function PhotoGrid({ photos, removeLabel }: { photos: Photo[]; removeLabel: string }) {
   return (
     <div className="mt-2 flex flex-wrap gap-3">
       {photos.map((img) => (
@@ -308,7 +316,7 @@ function PhotoGrid({ photos }: { photos: Photo[] }) {
             className="h-20 w-28 rounded-md border border-line object-cover peer-checked:opacity-30"
           />
           <span className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-md bg-grain/90 py-0.5 text-center text-[0.6rem] font-bold text-husk opacity-0 peer-checked:opacity-100">
-            REMOVE
+            {removeLabel}
           </span>
         </label>
       ))}

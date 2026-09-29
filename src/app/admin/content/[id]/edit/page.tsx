@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import PostEditor from "@/components/PostEditor";
 import { requireStaff } from "@/lib/session";
 import { getPostForEdit } from "@/lib/content";
+import { getDict } from "@/lib/i18n";
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   await requireStaff();
@@ -10,6 +11,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const postId = Number(id);
   const post = await getPostForEdit(postId);
   if (!post) notFound();
+  const t = (await getDict()).adminUi;
 
   return (
     <div className="max-w-2xl">
@@ -17,10 +19,10 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         href="/admin/content"
         className="log-label link-underline inline-flex text-stone transition-colors hover:text-field"
       >
-        ← Back to content
+        {t.backToContent}
       </Link>
       <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-        Edit notice
+        {t.editNotice}
       </h2>
       <div className="mt-5">
         <PostEditor

@@ -1,12 +1,14 @@
 import { castVoteAction } from "@/app/portal/actions";
 import type { PollResult } from "@/lib/content";
+import { getDict } from "@/lib/i18n";
 
-export default function PollCard({ poll, myVote }: { poll: PollResult; myVote: number | null }) {
+export default async function PollCard({ poll, myVote }: { poll: PollResult; myVote: number | null }) {
   const voted = myVote != null;
+  const t = await getDict();
 
   return (
     <div className="rounded-lg border border-line bg-husk-deep p-6">
-      <p className="log-label text-brand">Poll</p>
+      <p className="log-label text-brand">{t.poll.label}</p>
       <h3 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-field">
         {poll.question}
       </h3>
@@ -30,7 +32,9 @@ export default function PollCard({ poll, myVote }: { poll: PollResult; myVote: n
               </li>
             );
           })}
-          <p className="log-label mt-1">{poll.totalVotes} vote{poll.totalVotes === 1 ? "" : "s"}</p>
+          <p className="log-label mt-1">
+            {poll.totalVotes} {poll.totalVotes === 1 ? t.poll.vote : t.poll.votes}
+          </p>
         </ul>
       ) : (
         <form action={castVoteAction} className="mt-5 grid gap-2">
@@ -45,7 +49,7 @@ export default function PollCard({ poll, myVote }: { poll: PollResult; myVote: n
             </label>
           ))}
           <button className="mt-2 justify-self-start rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-husk transition-transform hover:-translate-y-0.5">
-            Vote
+            {t.polls.vote}
           </button>
         </form>
       )}

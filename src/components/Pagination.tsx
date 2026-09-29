@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { getDict } from "@/lib/i18n";
 
 /**
  * URL-driven pager. Emits `<basePath>?page=N` links so navigation is shareable
  * and works without JS. Renders nothing when everything fits on one page.
  */
-export default function Pagination({
+export default async function Pagination({
   page,
   pageCount,
   basePath,
@@ -14,6 +15,7 @@ export default function Pagination({
   basePath: string;
 }) {
   if (pageCount <= 1) return null;
+  const t = (await getDict()).pager;
 
   const href = (n: number) => (n <= 1 ? basePath : `${basePath}?page=${n}`);
   // A compact window of page numbers around the current page.
@@ -25,9 +27,9 @@ export default function Pagination({
     "grid h-10 min-w-10 place-items-center rounded-lg border border-line px-3 text-sm font-semibold transition-colors";
 
   return (
-    <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
+    <nav className="mt-8 flex items-center justify-center gap-2" aria-label={t.label}>
       {page > 1 ? (
-        <Link href={href(page - 1)} className={`${box} text-field hover:bg-husk-deep`} aria-label="Previous page">
+        <Link href={href(page - 1)} className={`${box} text-field hover:bg-husk-deep`} aria-label={t.previous}>
           ‹
         </Link>
       ) : (
@@ -67,7 +69,7 @@ export default function Pagination({
       )}
 
       {page < pageCount ? (
-        <Link href={href(page + 1)} className={`${box} text-field hover:bg-husk-deep`} aria-label="Next page">
+        <Link href={href(page + 1)} className={`${box} text-field hover:bg-husk-deep`} aria-label={t.next}>
           ›
         </Link>
       ) : (

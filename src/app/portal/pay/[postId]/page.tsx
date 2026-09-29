@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import PaymentForm from "@/components/PaymentForm";
 import { requireUser } from "@/lib/session";
-import { getPost } from "@/lib/content";
+import { acceptsPayment, getPost } from "@/lib/content";
 import { listPaymentMethods, postTotals } from "@/lib/payments";
+import { getDict } from "@/lib/i18n";
 
 const taka = (n: number) => `৳ ${n.toLocaleString("en-BD")}`;
 
@@ -13,10 +14,11 @@ export default async function PayPage({ params }: { params: Promise<{ postId: st
   const post = await getPost(Number(postId));
   if (!post) notFound();
   // Nothing to pay on an informational notice — send the reader back to it.
-  if (post.paymentMode === "none") redirect(`/portal/notice/${post.id}`);
+  if (!acceptsPayment(post)) redirect(`/portal/notice/${post.id}`);
 
   const isTour = post.paymentMode === "participation";
-  const [methods, totals] = await Promise.all([listPaymentMethods(true), postTotals(post.id)]);
+  const [methods, totals, dict] = await Promise.all([listPaymentMethods(true), postTotals(post.id), getDict()]);
+  const t = dict.pay;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -24,19 +26,17 @@ export default async function PayPage({ params }: { params: Promise<{ postId: st
         href={`/portal/notice/${post.id}`}
         className="log-label inline-flex items-center gap-1 text-stone transition-colors hover:text-field"
       >
-        ← Back to notice
+        {t.backToNotice}
       </Link>
 
-      <p className="log-label mt-4 text-brand">{isTour ? "Tour participation" : "Welfare contribution"}</p>
+      <p className="log-label mt-4 text-brand">{isTour ? t.tourParticipation : t.contribution}</p>
       <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-field">
         {post.title}
       </h1>
 
       {!post.paymentOpen ? (
         <div className="mt-8 rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="text-stone">
-            Payments for this notice are closed{isTour ? " — the tour is no longer taking bookings." : "."}
-          </p>
+          <p className="text-stone">{isTour ? t.closedTour : t.closed}</p>
         </div>
       ) : (
         <>
@@ -45,24 +45,26 @@ export default async function PayPage({ params }: { params: Promise<{ postId: st
             {isTour ? (
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <p className="log-label">Fee per person</p>
+                  <p className="log-label">{t.feePerPerson}</p>
                   <p className="font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums text-field">
                     {taka(post.feeAmount ?? 0)}
                   </p>
                 </div>
                 {totals.count > 0 && (
-                  <p className="log-label text-stone">{totals.count} already registered</p>
+                  <p className="log-label text-stone">
+                    {totals.count} {t.alreadyRegistered}
+                  </p>
                 )}
               </div>
             ) : (
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <p className="log-label">Give any amount</p>
-                  <p className="text-field">Every contribution helps — choose what you can give.</p>
+                  <p className="log-label">{t.giveAny}</p>
+                  <p className="text-field">{t.everyHelps}</p>
                 </div>
                 {totals.verified > 0 && (
                   <div className="text-right">
-                    <p className="log-label">Raised so far</p>
+                    <p className="log-label">{t.raisedSoFar}</p>
                     <p className="font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums text-field">
                       {taka(totals.verified)}
                     </p>
@@ -74,12 +76,9 @@ export default async function PayPage({ params }: { params: Promise<{ postId: st
 
           {/* Step 1 — pay to an account */}
           <h2 className="mt-10 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-            1 · Send the payment
+            {t.step1}
           </h2>
-          <p className="mt-2 max-w-2xl text-stone">
-            Pay using any option below, then record the reference in step 2 so the administration can
-            verify it.
-          </p>
+          <p className="mt-2 max-w-2xl text-stone">{t.step1Intro}</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {methods.map((m) => (
               <div key={m.id} className="rounded-xl border border-line p-5">
@@ -98,7 +97,7 @@ export default async function PayPage({ params }: { params: Promise<{ postId: st
 
           {/* Step 2 — report it */}
           <h2 className="mt-10 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-            2 · Report your payment
+            {t.step2}
           </h2>
           <div className="mt-5">
             <PaymentForm

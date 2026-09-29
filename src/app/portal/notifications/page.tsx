@@ -2,17 +2,18 @@ import Link from "next/link";
 import { requireUser } from "@/lib/session";
 import { listNotifications, type Notification } from "@/lib/notifications";
 import MarkNotificationsRead from "@/components/MarkNotificationsRead";
+import { getDict, type Dict } from "@/lib/i18n";
 
-const rel = (d: Date) => {
+const rel = (d: Date, t: Dict["notifications"], locale: string) => {
   const diff = Date.now() - new Date(d).getTime();
   const min = Math.round(diff / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 1) return t.justNow;
+  if (min < 60) return `${min}${t.minutesAgo}`;
   const h = Math.round(min / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `${h}${t.hoursAgo}`;
   const days = Math.round(h / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(d));
+  if (days < 7) return `${days}${t.daysAgo}`;
+  return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short" }).format(new Date(d));
 };
 
 const dot: Record<Notification["type"], string> = {
@@ -23,20 +24,21 @@ const dot: Record<Notification["type"], string> = {
 
 export default async function NotificationsPage() {
   const user = await requireUser();
-  const items = await listNotifications(user.id);
+  const [items, dict] = await Promise.all([listNotifications(user.id), getDict()]);
+  const t = dict.notifications;
   const hasUnread = items.some((n) => !n.read);
 
   return (
     <div className="max-w-2xl">
       <MarkNotificationsRead hasUnread={hasUnread} />
-      <p className="log-label text-brand">Updates</p>
+      <p className="log-label text-brand">{t.kicker}</p>
       <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-field">
-        Notifications
+        {t.title}
       </h1>
 
       {items.length === 0 ? (
         <p className="mt-8 rounded-lg border border-dashed border-line p-10 text-center text-stone">
-          Nothing yet. New notices and updates about your account will appear here.
+          {t.empty}
         </p>
       ) : (
         <ul className="mt-8 grid gap-2">
@@ -51,7 +53,7 @@ export default async function NotificationsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
                     <p className={`font-semibold ${n.read ? "text-field/80" : "text-field"}`}>{n.title}</p>
-                    <span className="log-label shrink-0 text-stone">{rel(n.created_at)}</span>
+                    <span className="log-label shrink-0 text-stone">{rel(n.created_at, t, dict.intl)}</span>
                   </div>
                   {n.body && <p className="mt-0.5 text-sm text-stone">{n.body}</p>}
                 </div>

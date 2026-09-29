@@ -3,8 +3,11 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ResetForm from "@/components/ResetForm";
+import { getDict } from "@/lib/i18n";
 
-export const metadata: Metadata = { title: "Reset password" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDict()).pageTitles.reset };
+}
 
 export default async function ResetPage({
   searchParams,
@@ -12,6 +15,7 @@ export default async function ResetPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token } = await searchParams;
+  const t = (await getDict()).reset;
   return (
     <>
       <SiteHeader />
@@ -20,10 +24,10 @@ export default async function ResetPage({
           <ResetForm token={token} />
         ) : (
           <div className="w-full max-w-sm text-center">
-            <p className="log-label text-grain">Missing token</p>
-            <p className="mt-3 text-field">This reset link is incomplete.</p>
+            <p className="log-label text-grain">{t.missingToken}</p>
+            <p className="mt-3 text-field">{t.incomplete}</p>
             <Link href="/forgot" className="mt-6 inline-block font-semibold text-brand hover:underline">
-              Request a new link
+              {t.requestNew}
             </Link>
           </div>
         )}

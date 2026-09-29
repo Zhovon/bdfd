@@ -18,19 +18,19 @@ an administrator verifies and approves them, and only then can they log in.
 - Profile edit with photo upload and blood-donor opt-in
 
 **Members' area (`/portal`, login-gated)**
-- Dashboard: fund total, blood-donor count, notices, module grid, latest notices
+- Dashboard: tour count, blood-donor count, notice count, latest notices
 - Travel & Tourism — tour notices + next-trip poll (one vote per member)
-- Welfare — support appeals, each with its own open-amount donation button
+- Welfare — support notices for colleagues in need (informational, no payments)
 - Blood Directory — volunteer donors, searchable by blood group
 - Condolence & Support — remembrance notices
 - Association Information — committee info + neutral election notices
 - Rich notices — cover image, excerpt, and ordered content sections with per-section photo galleries; each board links to a full notice detail page
 
 **Per-post payments (no Stripe / no card processing — gateway-ready)**
-- Every notice can carry a payment intent: **participation** (a fixed tour fee) or **donation** (open amount)
-- A tour notice shows a **Participate — ৳fee** button; a welfare appeal shows a **Donate** button (payer chooses the amount, with quick-pick chips)
+- Only **Travel & Tourism** notices can carry a payment intent: **participation** (a fixed tour fee) or **donation** (open amount); other boards are informational
+- A tour notice shows a **Participate — ৳fee** button, or a **Donate** button when set to an open amount (payer chooses, with quick-pick chips)
 - The payment page shows the mobile-banking / bank details, then the member **reports** what they paid (amount, method, transaction reference)
-- Admin **verifies** each contribution; verified totals show per appeal and as the welfare fund (scoped to donations, so tour fees don't inflate it)
+- Staff **verify** or **reject** each reported contribution (once — a decided payment can't be flipped); verified totals show per notice
 - Amounts and kind are **server-authoritative** — the tour fee is re-read from the post, never trusted from the client
 - **Gateway-ready:** the `donations` table carries `provider` / `gateway_ref` columns; a real gateway (SSLCommerz / bKash PGW) fills them and lands the row verified, no rework
 
@@ -38,13 +38,17 @@ an administrator verifies and approves them, and only then can they log in.
 - Membership — dashboard counts, pending approvals, roles, block/unblock, delete, CSV export
 - Content — publish / delete notices per board; set each notice's payment mode + fee
 - Polls — create polls (closes the previous), view live results
-- Payments — verify / reject reported contributions (tour + welfare), running fund totals
+- Payments — verify / reject reported contributions, running totals
 - Accounts — edit the mobile-banking & bank-transfer details shown on every payment page
 
 **Security**
 - `robots.txt` disallows `/admin` and `/portal`; `noindex` on both
 - All server actions and the CSV route re-check auth server-side
-- Cloudflare Turnstile captcha on registration (verified server-side; dev uses Cloudflare's always-pass test keys)
+- Cloudflare Turnstile captcha on registration and forgot-password (verified server-side; dev uses Cloudflare's always-pass test keys)
+- Login and password-reset requests are rate-limited per account and per IP (counters kept in Postgres)
+- Sessions expire server-side after 8 hours; a password reset signs out every session, and reset links work once
+- Uploads are checked by their actual file contents (not the file name) and removed from storage when a post, photo or PDF is deleted
+- Destructive admin actions (delete, block, reject) ask for confirmation
 
 ## Run it locally
 
@@ -62,7 +66,7 @@ poll, and the four payment methods are created automatically on first run.
 - **Database** — `DATABASE_URL`. Local dev uses the docker Postgres (no TLS). Hosted providers need TLS, which the app enables automatically for any non-local host. On Vercel + **Supabase**, use the **pooled** connection string (Supavisor, port **6543**, transaction mode) — serverless needs the pooler, not the direct 5432 connection.
 - **Bootstrap admin** — `ADMIN_EMAIL` / `ADMIN_PASSWORD` (defaults `admin@portal.gov.bd` / `admin-change-me`). Log in at **/login**, then visit **/admin**.
 - **Emails** — if no `SMTP_*` vars are set, approval / reset emails are logged to the server console (fine for local dev). Set `SMTP_HOST` etc. to send for real.
-- **Image storage** — set the `S3_*` vars to store uploads in any S3-compatible object store (Supabase Storage, Cloudflare R2, Backblaze B2…); unset, uploads fall back to local disk (dev only). Vercel's filesystem is read-only, so object storage is **required** in production. Switch providers by changing env vars only. See `.env.example` for the Supabase Storage and R2 value shapes.
+- **Image storage** — set the `S3_*` vars to store uploads in any S3-compatible object store (Supabase Storage, Cloudflare R2, Backblaze B2…); unset, uploads fall back to local disk under `storage/uploads/` (or `UPLOAD_DIR`) and are served by the app at `/uploads/…` (dev only). Vercel's filesystem is read-only, so object storage is **required** in production. Switch providers by changing env vars only. See `.env.example` for the Supabase Storage and R2 value shapes.
 - `SESSION_SECRET` signs the login cookie; `APP_URL` builds reset links — set both in production.
 
 ## Where things live

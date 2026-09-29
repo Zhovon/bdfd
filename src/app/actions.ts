@@ -1,11 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createUser, EmailTakenError, getUserByEmail, setPassword } from "@/lib/db";
+import { createUser, EmailTakenError, getUserByEmail, getUserById, setPassword } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setSession, clearSession, makeResetToken, verifyResetToken } from "@/lib/session";
 import { sendMail, resetEmail } from "@/lib/mailer";
 import { verifyCaptcha } from "@/lib/captcha";
+import { hit, clearHits, clientIp } from "@/lib/ratelimit";
+import { getDict } from "@/lib/i18n";
+
+const MINUTE = 60;
 
 const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim() : "");
 
@@ -33,28 +37,25 @@ export async function registerUser(
     password: str(formData.get("password")),
     confirm: str(formData.get("confirm")),
   };
+  const m = (await getDict()).msg;
   const fieldErrors: RegisterState["fieldErrors"] = {};
-  if (v.fullName.length < 2) fieldErrors.fullName = "Please enter your full name.";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.officialEmail)) fieldErrors.officialEmail = "Enter a valid official email.";
-  if (!/^[0-9+\-\s]{6,20}$/.test(v.mobile)) fieldErrors.mobile = "Enter a valid mobile number.";
-  if (!v.serviceId) fieldErrors.serviceId = "Enter your PDS / Service ID.";
-  if (!v.designation) fieldErrors.designation = "Enter your designation.";
-  if (!v.posting) fieldErrors.posting = "Enter your present posting.";
-  if (v.password.length < 8) fieldErrors.password = "Use at least 8 characters.";
-  if (v.confirm !== v.password) fieldErrors.confirm = "Passwords don't match.";
+  if (v.fullName.length < 2) fieldErrors.fullName = m.enterName;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.officialEmail)) fieldErrors.officialEmail = m.enterEmail;
+  if (!/^[0-9+\-\s]{6,20}$/.test(v.mobile)) fieldErrors.mobile = m.enterMobile;
+  if (!v.serviceId) fieldErrors.serviceId = m.enterServiceId;
+  if (!v.designation) fieldErrors.designation = m.enterDesignation;
+  if (!v.posting) fieldErrors.posting = m.enterPosting;
+  if (v.password.length < 8) fieldErrors.password = m.passwordShort;
+  if (v.confirm !== v.password) fieldErrors.confirm = m.passwordMismatch;
 
   if (Object.keys(fieldErrors).length > 0) {
-    return { ok: false, message: "Please fix the highlighted fields.", fieldErrors };
+    return { ok: false, message: m.fixFields, fieldErrors };
   }
 
   // Bot check — verified server-side with Cloudflare.
   const captchaOk = await verifyCaptcha(str(formData.get("cf-turnstile-response")));
   if (!captchaOk) {
-    return {
-      ok: false,
-      message: "Couldn't verify you're human — please complete the check and try again.",
-      fieldErrors: { captcha: "Verification failed. Try the check again." },
-    };
+    return { ok: false, message: m.captchaFailed, fieldErrors: { captcha: m.captchaRetry } };
   }
 
   try {
@@ -70,16 +71,13 @@ export async function registerUser(
     });
   } catch (err) {
     if (err instanceof EmailTakenError) {
-      return { ok: false, message: err.message, fieldErrors: { officialEmail: err.message } };
+      return { ok: false, message: m.emailTaken, fieldErrors: { officialEmail: m.emailTaken } };
     }
     console.error("registerUser failed:", err);
-    return { ok: false, message: "Couldn't submit your registration. Please try again shortly." };
+    return { ok: false, message: m.registerFailed };
   }
 
-  return {
-    ok: true,
-    message: "Registration received. An administrator will verify your details and email you once your account is approved.",
-  };
+  return { ok: true, message: m.registered };
 }
 
 /* -------------------------------- Login --------------------------------- */
@@ -89,20 +87,28 @@ export type LoginState = { error: string } | null;
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = str(formData.get("email")).toLowerCase();
   const password = str(formData.get("password"));
+  const m = (await getDict()).msg;
 
-  if (!email || !password) return { error: "Enter your email and password." };
+  if (!email || !password) return { error: m.enterEmailPassword };
+
+  // Slow down password guessing: per account and per network address.
+  const ip = await clientIp();
+  const allowed =
+    (await hit(`login:ip:${ip}`, 30, 15 * MINUTE)) && (await hit(`login:email:${email}`, 8, 15 * MINUTE));
+  if (!allowed) return { error: m.tooManyLogins };
 
   const user = await getUserByEmail(email);
   // Same message whether the email is unknown or the password is wrong.
   if (!user || !(await verifyPassword(password, user.password_hash))) {
-    return { error: "Incorrect email or password." };
+    return { error: m.badLogin };
   }
 
-  if (user.status === "pending") return { error: "Your account is awaiting administrator approval." };
-  if (user.status === "rejected") return { error: "Your registration was not approved. Contact the administration." };
-  if (user.status === "blocked") return { error: "This account has been blocked. Contact the administration." };
+  if (user.status === "pending") return { error: m.pending };
+  if (user.status === "rejected") return { error: m.rejected };
+  if (user.status === "blocked") return { error: m.blocked };
 
-  await setSession(user.id);
+  await clearHits(`login:email:${email}`);
+  await setSession(user.id, user.session_version);
   redirect(user.role === "member" ? "/portal" : "/admin");
 }
 
@@ -117,20 +123,28 @@ export type ForgotState = { done: boolean; message: string } | null;
 
 export async function requestPasswordReset(_prev: ForgotState, formData: FormData): Promise<ForgotState> {
   const email = str(formData.get("email")).toLowerCase();
-  const user = email ? await getUserByEmail(email) : null;
+  const m = (await getDict()).msg;
+  if (!email) return { done: false, message: m.enterOfficialEmail };
+
+  if (!(await verifyCaptcha(str(formData.get("cf-turnstile-response"))))) {
+    return { done: false, message: m.captchaFailed };
+  }
+  if (!(await hit(`forgot:ip:${await clientIp()}`, 10, 60 * MINUTE))) {
+    return { done: false, message: m.tooManyResets };
+  }
+  // Cap emails per account without revealing whether the account exists.
+  const underCap = await hit(`forgot:email:${email}`, 3, 60 * MINUTE);
+  const user = underCap ? await getUserByEmail(email) : null;
 
   // Only send for real, approved accounts — but always show the same message.
   if (user && user.status === "approved") {
     const base = process.env.APP_URL ?? "http://localhost:3000";
-    const url = `${base}/reset?token=${makeResetToken(user.id)}`;
+    const url = `${base}/reset?token=${makeResetToken(user.id, user.session_version)}`;
     const { subject, text } = resetEmail(user.full_name, url);
     await sendMail(user.official_email, subject, text);
   }
 
-  return {
-    done: true,
-    message: "If that email belongs to an approved account, we've sent a reset link. Check your inbox.",
-  };
+  return { done: true, message: m.resetSent };
 }
 
 export type ResetState = { error: string } | null;
@@ -140,11 +154,18 @@ export async function resetPassword(_prev: ResetState, formData: FormData): Prom
   const password = str(formData.get("password"));
   const confirm = str(formData.get("confirm"));
 
-  const userId = verifyResetToken(token);
-  if (userId == null) return { error: "This reset link is invalid or has expired. Request a new one." };
-  if (password.length < 8) return { error: "Use at least 8 characters." };
-  if (password !== confirm) return { error: "Passwords don't match." };
+  const m = (await getDict()).msg;
+  const invalid = { error: m.resetInvalid };
+  const reset = verifyResetToken(token);
+  if (!reset) return invalid;
+  if (password.length < 8) return { error: m.passwordShort };
+  if (password !== confirm) return { error: m.passwordMismatch };
 
-  await setPassword(userId, await hashPassword(password));
+  // The link is single-use: it must still match the account's current version,
+  // and the account must still be approved.
+  const user = await getUserById(reset.id);
+  if (!user || user.status !== "approved" || user.session_version !== reset.version) return invalid;
+
+  if (!(await setPassword(user.id, await hashPassword(password), reset.version))) return invalid;
   redirect("/login?reset=1");
 }

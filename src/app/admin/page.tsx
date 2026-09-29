@@ -2,6 +2,8 @@ import Link from "next/link";
 import { listUsers, statusCounts, type User } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { approveUser, rejectUser, blockUser, unblockUser, setRole, removeUser } from "./actions";
+import ConfirmButton from "@/components/ConfirmButton";
+import { getDict } from "@/lib/i18n";
 
 const badge: Record<User["status"], string> = {
   pending: "bg-grain/10 text-grain",
@@ -12,33 +14,35 @@ const badge: Record<User["status"], string> = {
 
 export default async function MembershipPage() {
   await requireAdmin(); // moderators are redirected to /admin/content
-  const [counts, pending, members] = await Promise.all([
+  const [counts, pending, members, dict] = await Promise.all([
     statusCounts(),
     listUsers("pending"),
     listUsers(),
+    getDict(),
   ]);
+  const t = dict.adminUi;
 
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Membership
+          {t.membership}
         </h2>
         <Link
           href="/admin/export"
           prefetch={false}
           className="rounded-full border border-field/25 px-5 py-2.5 text-sm font-semibold text-field transition-colors hover:bg-field hover:text-husk"
         >
-          Download CSV
+          {t.downloadCsv}
         </Link>
       </div>
 
       {/* Dashboard */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         {[
-          { label: "Total members", value: counts.total },
-          { label: "Pending approval", value: counts.pending },
-          { label: "Approved", value: counts.approved },
+          { label: t.totalMembers, value: counts.total },
+          { label: t.pendingApproval, value: counts.pending },
+          { label: t.approved, value: counts.approved },
         ].map((c) => (
           <div key={c.label} className="rounded-lg border border-line bg-husk-deep p-5">
             <p className="log-label">{c.label}</p>
@@ -52,9 +56,9 @@ export default async function MembershipPage() {
       {/* Role reference */}
       <div className="mt-6 grid gap-3 rounded-lg border border-line p-5 sm:grid-cols-3">
         {[
-          { role: "Member", can: "Views modules, votes in polls, reports donations, edits own profile & blood listing." },
-          { role: "Moderator", can: "Everything a member can, plus posts notices, runs polls, and verifies donations." },
-          { role: "Admin", can: "Full control — approves members, sets roles, edits payment details, exports data." },
+          { role: t.roleMember, can: t.canMember },
+          { role: t.roleModerator, can: t.canModerator },
+          { role: t.roleAdmin, can: t.canAdmin },
         ].map((r) => (
           <div key={r.role}>
             <p className="log-label text-brand">{r.role}</p>
@@ -65,10 +69,10 @@ export default async function MembershipPage() {
 
       {/* Pending approvals */}
       <h3 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-        Pending approvals <span className="text-stone">({pending.length})</span>
+        {t.pendingApprovals} <span className="text-stone">({pending.length})</span>
       </h3>
       {pending.length === 0 ? (
-        <p className="mt-4 text-stone">Nothing awaiting review.</p>
+        <p className="mt-4 text-stone">{t.nothingPending}</p>
       ) : (
         <ul className="mt-5 grid gap-4">
           {pending.map((u) => (
@@ -89,14 +93,17 @@ export default async function MembershipPage() {
                 <form action={approveUser}>
                   <input type="hidden" name="id" value={u.id} />
                   <button className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-husk transition-transform hover:-translate-y-0.5">
-                    Approve
+                    {t.approve}
                   </button>
                 </form>
                 <form action={rejectUser}>
                   <input type="hidden" name="id" value={u.id} />
-                  <button className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-stone transition-colors hover:text-grain">
-                    Reject
-                  </button>
+                  <ConfirmButton
+                    message={t.confirmReject}
+                    className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-stone transition-colors hover:text-grain"
+                  >
+                    {t.reject}
+                  </ConfirmButton>
                 </form>
               </div>
             </li>
@@ -106,13 +113,13 @@ export default async function MembershipPage() {
 
       {/* All members */}
       <h3 className="mt-12 font-[family-name:var(--font-display)] text-xl font-bold text-field">
-        All members <span className="text-stone">({members.length})</span>
+        {t.allMembers} <span className="text-stone">({members.length})</span>
       </h3>
       <div className="mt-5 overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              {["Name", "Posting", "Contact", "Role", "Status", "Actions"].map((h) => (
+              {[t.colName, t.colPosting, t.colContact, t.colRole, t.colStatus, t.colActions].map((h) => (
                 <th key={h} className="log-label whitespace-nowrap py-3 pr-4 font-normal">
                   {h}
                 </th>
@@ -133,7 +140,7 @@ export default async function MembershipPage() {
                 </td>
                 <td className="py-3 pr-4">
                   {u.role === "admin" ? (
-                    <span className="capitalize text-stone">admin</span>
+                    <span className="text-stone">{t.roles.admin}</span>
                   ) : (
                     <form action={setRole} className="flex items-center gap-1">
                       <input type="hidden" name="id" value={u.id} />
@@ -142,16 +149,16 @@ export default async function MembershipPage() {
                         defaultValue={u.role}
                         className="rounded border border-line bg-husk px-2 py-1 text-sm text-field"
                       >
-                        <option value="member">member</option>
-                        <option value="moderator">moderator</option>
+                        <option value="member">{t.roles.member}</option>
+                        <option value="moderator">{t.roles.moderator}</option>
                       </select>
-                      <button className="log-label text-brand hover:underline">set</button>
+                      <button className="log-label text-brand hover:underline">{t.set}</button>
                     </form>
                   )}
                 </td>
                 <td className="py-3 pr-4">
                   <span className={`log-label rounded-full px-2.5 py-1 ${badge[u.status]}`}>
-                    {u.status}
+                    {t.status[u.status]}
                   </span>
                 </td>
                 <td className="py-3 pr-4">
@@ -160,21 +167,27 @@ export default async function MembershipPage() {
                       {u.status === "blocked" ? (
                         <form action={unblockUser}>
                           <input type="hidden" name="id" value={u.id} />
-                          <button className="log-label text-brand hover:underline">Unblock</button>
+                          <button className="log-label text-brand hover:underline">{t.unblock}</button>
                         </form>
                       ) : (
                         <form action={blockUser}>
                           <input type="hidden" name="id" value={u.id} />
-                          <button className="log-label text-stone hover:text-grain hover:underline">
-                            Block
-                          </button>
+                          <ConfirmButton
+                            message={t.confirmBlock}
+                            className="log-label text-stone hover:text-grain hover:underline"
+                          >
+                            {t.block}
+                          </ConfirmButton>
                         </form>
                       )}
                       <form action={removeUser}>
                         <input type="hidden" name="id" value={u.id} />
-                        <button className="log-label text-stone hover:text-grain hover:underline">
-                          Delete
-                        </button>
+                        <ConfirmButton
+                          message={t.confirmDeleteUser}
+                          className="log-label text-stone hover:text-grain hover:underline"
+                        >
+                          {t.delete}
+                        </ConfirmButton>
                       </form>
                     </div>
                   )}

@@ -4,9 +4,11 @@ import { removePost } from "../actions";
 import PostEditor from "@/components/PostEditor";
 import Pagination from "@/components/Pagination";
 import { categoryMeta } from "@/lib/site";
+import ConfirmButton from "@/components/ConfirmButton";
+import { getDict } from "@/lib/i18n";
 
-const fmt = (d: Date) =>
-  new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
+const fmt = (d: Date, locale: string) =>
+  new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(d));
 
 export default async function AdminContent({
   searchParams,
@@ -14,18 +16,19 @@ export default async function AdminContent({
   searchParams: Promise<{ page?: string }>;
 }) {
   const { page } = await searchParams;
-  const { items: posts, total, page: current, pageCount } = await listAllPostsPaged(Number(page) || 1);
+  const [{ items: posts, total, page: current, pageCount }, dict] = await Promise.all([
+    listAllPostsPaged(Number(page) || 1),
+    getDict(),
+  ]);
+  const t = dict.adminUi;
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr]">
       {/* Create */}
       <div className="min-w-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          New post / notice
+          {dict.editor.newPost}
         </h2>
-        <p className="mt-2 text-sm text-stone">
-          Add a title and summary, then build the story in sections — each with its own heading, text
-          and photos (e.g. Day 1, Day 2, Day 3).
-        </p>
+        <p className="mt-2 text-sm text-stone">{t.contentIntro}</p>
         <div className="mt-5">
           <PostEditor />
         </div>
@@ -34,11 +37,12 @@ export default async function AdminContent({
       {/* List */}
       <div className="min-w-0">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Posted <span className="text-stone">({total})</span>
+          {dict.editor.posted} <span className="text-stone">({total})</span>
         </h2>
         <ul className="mt-5 grid gap-3">
           {posts.map((p) => {
             const meta = categoryMeta(p.category);
+            const label = dict.boards[p.category as keyof typeof dict.boards]?.label ?? meta.label;
             return (
               <li key={p.id} className="flex items-start justify-between gap-4 rounded-lg border border-line p-4">
                 <div className="flex min-w-0 gap-3">
@@ -56,9 +60,9 @@ export default async function AdminContent({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="log-label" style={{ color: meta.accent }}>
-                        {meta.label}
+                        {label}
                       </span>
-                      <span className="log-label text-stone">{fmt(p.created_at)}</span>
+                      <span className="log-label text-stone">{fmt(p.created_at, dict.intl)}</span>
                     </div>
                     <Link
                       href={`/portal/notice/${p.id}`}
@@ -74,13 +78,16 @@ export default async function AdminContent({
                     href={`/admin/content/${p.id}/edit`}
                     className="log-label text-brand hover:underline"
                   >
-                    Edit
+                    {t.edit}
                   </Link>
                   <form action={removePost}>
                     <input type="hidden" name="id" value={p.id} />
-                    <button className="log-label text-stone hover:text-grain hover:underline">
-                      Delete
-                    </button>
+                    <ConfirmButton
+                      message={t.confirmDeletePost}
+                      className="log-label text-stone hover:text-grain hover:underline"
+                    >
+                      {t.delete}
+                    </ConfirmButton>
                   </form>
                 </div>
               </li>

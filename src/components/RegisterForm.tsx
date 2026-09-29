@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { registerUser, type RegisterState } from "@/app/actions";
 import Turnstile from "@/components/Turnstile";
 import PasswordInput from "@/components/PasswordInput";
+import { useI18n } from "@/components/I18nProvider";
 
 type Key =
   | "fullName"
@@ -15,18 +16,22 @@ type Key =
   | "password"
   | "confirm";
 
-const fields: { key: Key; label: string; type?: string; full?: boolean; hint?: string }[] = [
-  { key: "fullName", label: "Full name", full: true },
-  { key: "officialEmail", label: "Official email", type: "email" },
-  { key: "mobile", label: "Mobile number", type: "tel" },
-  { key: "serviceId", label: "Govt PDS / Service ID" },
-  { key: "designation", label: "Designation" },
-  { key: "posting", label: "Present posting", full: true },
-  { key: "password", label: "Password", type: "password", hint: "min. 8 characters" },
-  { key: "confirm", label: "Confirm password", type: "password" },
+type Labels = ReturnType<typeof useI18n>["t"]["register"];
+
+const fields: { key: Key; label: keyof Labels; type?: string; full?: boolean; hint?: keyof Labels }[] = [
+  { key: "fullName", label: "fullName", full: true },
+  { key: "officialEmail", label: "email", type: "email" },
+  { key: "mobile", label: "mobile", type: "tel" },
+  { key: "serviceId", label: "serviceId" },
+  { key: "designation", label: "designation" },
+  { key: "posting", label: "posting", full: true },
+  { key: "password", label: "password", type: "password", hint: "passwordHint" },
+  { key: "confirm", label: "confirm", type: "password" },
 ];
 
 export default function RegisterForm({ siteKey }: { siteKey: string }) {
+  const { t } = useI18n();
+  const r = t.register;
   const [state, formAction, pending] = useActionState<RegisterState | null, FormData>(
     registerUser,
     null,
@@ -35,9 +40,9 @@ export default function RegisterForm({ siteKey }: { siteKey: string }) {
   if (state?.ok) {
     return (
       <div className="rounded-lg border border-brand bg-husk-deep p-8">
-        <p className="log-label text-brand">Registration received</p>
+        <p className="log-label text-brand">{r.received}</p>
         <p className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold text-field">
-          Awaiting approval
+          {r.awaiting}
         </p>
         <p className="mt-2 text-stone">{state.message}</p>
       </div>
@@ -49,8 +54,8 @@ export default function RegisterForm({ siteKey }: { siteKey: string }) {
       {fields.map((f) => (
         <label key={f.key} className={f.full ? "sm:col-span-2" : ""}>
           <span className="log-label flex items-center gap-2 text-field">
-            {f.label}
-            {f.hint && <span className="text-stone">· {f.hint}</span>}
+            {r[f.label]}
+            {f.hint && <span className="text-stone">· {r[f.hint]}</span>}
           </span>
           {f.type === "password" ? (
             <PasswordInput
@@ -76,7 +81,7 @@ export default function RegisterForm({ siteKey }: { siteKey: string }) {
       ))}
 
       <div className="sm:col-span-2">
-        <span className="log-label mb-2 block text-field">Verify you&apos;re human</span>
+        <span className="log-label mb-2 block text-field">{r.verifyHuman}</span>
         <Turnstile siteKey={siteKey} resetKey={state} />
         {state?.fieldErrors?.captcha && (
           <span className="mt-1 block text-sm text-grain">{state.fieldErrors.captcha}</span>
@@ -89,7 +94,7 @@ export default function RegisterForm({ siteKey }: { siteKey: string }) {
           disabled={pending}
           className="rounded-full bg-brand px-8 py-3.5 font-semibold text-husk transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? "Submitting…" : "Submit registration"}
+          {pending ? r.submitting : r.submit}
         </button>
         {state && !state.ok && !state.fieldErrors && (
           <span className="text-sm text-grain">{state.message}</span>

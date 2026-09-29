@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/components/I18nProvider";
 
 // adminOnly tabs are hidden from moderators.
 const tabs = [
-  { href: "/admin", label: "Membership", adminOnly: true },
-  { href: "/admin/content", label: "Content", adminOnly: false },
-  { href: "/admin/polls", label: "Polls", adminOnly: false },
-  { href: "/admin/donations", label: "Payments", adminOnly: false },
-  { href: "/admin/payments", label: "Accounts", adminOnly: true },
-];
+  { href: "/admin", label: "membership", adminOnly: true },
+  { href: "/admin/content", label: "content", adminOnly: false },
+  { href: "/admin/polls", label: "polls", adminOnly: false },
+  { href: "/admin/donations", label: "payments", adminOnly: false },
+  { href: "/admin/payments", label: "accounts", adminOnly: true },
+] as const;
 
 export default function AdminNav({ role }: { role: string }) {
   const pathname = usePathname();
+  const labels = useI18n().t.adminUi.tabs;
   const visible = tabs.filter((t) => !t.adminOnly || role === "admin");
   return (
     <nav className="flex gap-1 overflow-x-auto border-b border-line">
@@ -29,7 +31,7 @@ export default function AdminNav({ role }: { role: string }) {
                 : "border-transparent text-stone hover:text-field"
             }`}
           >
-            {t.label}
+            {labels[t.label]}
           </Link>
         );
       })}

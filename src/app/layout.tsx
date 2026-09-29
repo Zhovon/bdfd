@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, Space_Mono } from "next/font/google";
-import { org } from "@/lib/site";
 import { getLocale, getDict } from "@/lib/i18n";
 import { I18nProvider } from "@/components/I18nProvider";
 import "./globals.css";
@@ -24,27 +23,30 @@ const mono = Space_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://foodofficersbd.org"),
-  title: {
-    default: org.name,
-    template: `%s · ${org.short}`,
-  },
-  description: org.tagline,
-  applicationName: org.short,
-  openGraph: {
-    type: "website",
-    siteName: org.name,
-    title: org.name,
-    description: org.tagline,
-    url: "/",
-  },
-  twitter: {
-    card: "summary",
-    title: org.name,
-    description: org.tagline,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { brand } = await getDict();
+  return {
+    metadataBase: new URL("https://foodofficersbd.org"),
+    title: {
+      default: brand.name,
+      template: `%s · ${brand.short}`,
+    },
+    description: brand.tagline,
+    applicationName: brand.short,
+    openGraph: {
+      type: "website",
+      siteName: brand.name,
+      title: brand.name,
+      description: brand.tagline,
+      url: "/",
+    },
+    twitter: {
+      card: "summary",
+      title: brand.name,
+      description: brand.tagline,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0a3b2c",

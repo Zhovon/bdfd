@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { org } from "@/lib/site";
 
 const from = () => process.env.MAIL_FROM ?? "Officers' Portal <no-reply@portal.gov.bd>";
 
@@ -28,7 +29,7 @@ export async function sendMail(to: string, subject: string, text: string): Promi
 export function approvalEmail(name: string): { subject: string; text: string } {
   return {
     subject: "Your portal registration is approved",
-    text: `Dear ${name},\n\nYour registration for the Internal Officers' Welfare & Community Portal has been approved. You can now log in and access members-only content.\n\nRegards,\nPortal Administration`,
+    text: `Dear ${name},\n\nYour registration for the ${org.name} has been approved. You can now log in and access members-only content.\n\nRegards,\nPortal Administration`,
   };
 }
 
@@ -42,6 +43,6 @@ export function resetEmail(name: string, url: string): { subject: string; text: 
 export function rejectionEmail(name: string): { subject: string; text: string } {
   return {
     subject: "Your portal registration could not be approved",
-    text: `Dear ${name},\n\nWe were unable to verify your registration for the Internal Officers' Welfare & Community Portal at this time. Please contact the administration if you believe this is an error.\n\nRegards,\nPortal Administration`,
+    text: `Dear ${name},\n\nWe were unable to verify your registration for the ${org.name} at this time. Please contact the administration if you believe this is an error.\n\nRegards,\nPortal Administration`,
   };
 }

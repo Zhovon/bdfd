@@ -8,7 +8,7 @@ import type { Locale } from "@/lib/i18n";
 
 /** A compact EN / বাংলা switch. Persists the choice and refreshes the tree. */
 export default function LangToggle({ className = "" }: { className?: string }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -24,7 +24,7 @@ export default function LangToggle({ className = "" }: { className?: string }) {
     <div
       className={`inline-flex items-center rounded-full border border-line bg-husk/70 p-0.5 ${className}`}
       role="group"
-      aria-label="Language"
+      aria-label={t.lang.label}
     >
       {(["bn", "en"] as const).map((l) => (
         <button
