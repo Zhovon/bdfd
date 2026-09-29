@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { org } from "@/lib/site";
 import "./globals.css";
@@ -23,8 +23,29 @@ const mono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${org.name} — ${org.tagline}`,
+  metadataBase: new URL("https://foodofficersbd.org"),
+  title: {
+    default: org.name,
+    template: `%s · ${org.short}`,
+  },
   description: org.tagline,
+  applicationName: org.short,
+  openGraph: {
+    type: "website",
+    siteName: org.name,
+    title: org.name,
+    description: org.tagline,
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: org.name,
+    description: org.tagline,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a3b2c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

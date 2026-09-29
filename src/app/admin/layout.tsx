@@ -6,7 +6,7 @@ import { logout } from "@/app/actions";
 import { org } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `Admin — ${org.name}`,
+  title: "Admin",
   robots: { index: false, follow: false },
 };
 

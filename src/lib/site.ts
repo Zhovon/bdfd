@@ -5,7 +5,8 @@
 export const org = {
   name: "Bangladesh Food Ministry Officers' Tour & Travel Portal",
   short: "Tour & Travel Portal",
-  monogram: "FM", // Food Ministry
+  eyebrow: "Bangladesh · Food Ministry", // mono kicker above the wordmark
+  monogram: "FM", // Food Ministry — legacy text mark, superseded by the crest
   tagline: "Tour planning, travel and welfare for Bangladesh Food Ministry officers",
 };
 

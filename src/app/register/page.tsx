@@ -3,10 +3,9 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import RegisterForm from "@/components/RegisterForm";
-import { org } from "@/lib/site";
 import { captchaSiteKey } from "@/lib/captcha";
 
-export const metadata: Metadata = { title: `Register — ${org.name}` };
+export const metadata: Metadata = { title: "Register" };
 
 export default function RegisterPage() {
   return (

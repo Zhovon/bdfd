@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Food Officers' Portal">
+  <rect width="32" height="32" rx="7" fill="#0a3b2c"/>
+  <rect x="3.5" y="3.5" width="25" height="25" rx="4.5" fill="none" stroke="#f4efe4" stroke-opacity="0.28"/>
+  <g stroke="#f4efe4" stroke-width="1.7" stroke-linecap="round">
+    <path d="M16 27V8.5"/>
+    <path d="M16 25.4c-2.3-.2-4-1.7-4.8-4M16 25.4c2.3-.2 4-1.7 4.8-4"/>
+  </g>
+  <g fill="#f4efe4">
+    <ellipse cx="16" cy="6.6" rx="1.65" ry="3.85"/>
+    <ellipse cx="18.75" cy="10.6" rx="1.65" ry="3.85" transform="rotate(30 18.75 10.6)"/>
+    <ellipse cx="13.25" cy="10.6" rx="1.65" ry="3.85" transform="rotate(-30 13.25 10.6)"/>
+    <ellipse cx="19.3" cy="15.5" rx="1.65" ry="3.85" transform="rotate(30 19.3 15.5)"/>
+    <ellipse cx="12.7" cy="15.5" rx="1.65" ry="3.85" transform="rotate(-30 12.7 15.5)"/>
+    <ellipse cx="19.05" cy="20.4" rx="1.55" ry="3.55" transform="rotate(30 19.05 20.4)"/>
+    <ellipse cx="12.95" cy="20.4" rx="1.55" ry="3.55" transform="rotate(-30 12.95 20.4)"/>
+  </g>
+</svg>

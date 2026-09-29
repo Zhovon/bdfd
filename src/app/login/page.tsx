@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import LoginForm from "@/components/LoginForm";
-import { org } from "@/lib/site";
 
-export const metadata: Metadata = { title: `Log in — ${org.name}` };
+export const metadata: Metadata = { title: "Log in" };
 
 export default async function LoginPage({
   searchParams,

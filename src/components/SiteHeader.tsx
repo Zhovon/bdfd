@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Brand from "@/components/Brand";
 import { org, modules } from "@/lib/site";
 
 type Props = { authed?: boolean; isAdmin?: boolean };
@@ -28,17 +29,7 @@ export default function SiteHeader({ authed = false, isAdmin = false }: Props) {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-husk/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <Link href="/" className="flex items-center gap-3" aria-label={`${org.name} home`}>
-          <span
-            className="seal relative grid h-10 w-10 shrink-0 place-items-center rounded-[4px] bg-field font-[family-name:var(--font-display)] text-sm font-bold text-grain"
-            aria-hidden
-          >
-            {org.monogram}
-          </span>
-          <span className="block max-w-[16rem] font-[family-name:var(--font-display)] text-base font-bold leading-tight text-field sm:text-lg">
-            {org.name}
-          </span>
-        </Link>
+        <Brand href="/" tone="onLight" />
 
         <div className="flex items-center gap-2 sm:gap-3">
           {authed ? (

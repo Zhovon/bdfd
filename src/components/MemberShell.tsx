@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { memberNav, org } from "@/lib/site";
+import Brand from "@/components/Brand";
+import { memberNav } from "@/lib/site";
 import { logout } from "@/app/actions";
 
 type Props = {
@@ -18,17 +19,7 @@ export default function MemberShell({ user, unread, children }: Props) {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-line bg-husk/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <Link href="/portal" className="flex items-center gap-3">
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-[3px] bg-field font-[family-name:var(--font-display)] text-sm font-bold text-grain"
-              aria-hidden
-            >
-              {org.monogram}
-            </span>
-            <span className="hidden font-[family-name:var(--font-display)] font-bold text-field sm:block">
-              Members&apos; area
-            </span>
-          </Link>
+          <Brand href="/portal" title="Members' area" size="sm" />
           <div className="flex items-center gap-3">
             {user.isAdmin && (
               <Link

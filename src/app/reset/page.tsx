@@ -3,9 +3,8 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ResetForm from "@/components/ResetForm";
-import { org } from "@/lib/site";
 
-export const metadata: Metadata = { title: `Reset password — ${org.name}` };
+export const metadata: Metadata = { title: "Reset password" };
 
 export default async function ResetPage({
   searchParams,

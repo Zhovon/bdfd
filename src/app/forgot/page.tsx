@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ForgotForm from "@/components/ForgotForm";
-import { org } from "@/lib/site";
 
-export const metadata: Metadata = { title: `Forgot password — ${org.name}` };
+export const metadata: Metadata = { title: "Forgot password" };
 
 export default function ForgotPage() {
   return (

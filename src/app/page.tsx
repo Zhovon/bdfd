@@ -1,7 +1,7 @@
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import { org, modules } from "@/lib/site";
+import { modules } from "@/lib/site";
 import { getSessionUser, isStaff } from "@/lib/session";
 
 export default async function Home() {
