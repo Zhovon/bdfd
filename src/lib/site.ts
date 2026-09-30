@@ -40,7 +40,7 @@ export const modules: Module[] = [
   {
     code: "CND",
     slug: "condolence",
-    title: "Condolence & Support",
+    title: "Condolence",
     blurb: "Remembering colleagues and standing by their families.",
   },
   {

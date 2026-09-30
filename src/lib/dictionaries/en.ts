@@ -84,7 +84,7 @@ export const en = {
       label: "Welfare",
     },
     condolence: {
-      title: "Condolence & Support",
+      title: "Condolence",
       blurb: "Remembering colleagues and standing by their families.",
       label: "Condolence",
     },

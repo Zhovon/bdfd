@@ -52,7 +52,11 @@ export default function Brand({
       </span>
       <span className="min-w-0 leading-tight">
         {/* The eyebrow is dropped on phones, where it would wrap and crowd the header. */}
-        <span className={`log-label hidden text-[0.58rem] sm:block ${eyebrowColor}`}>{kicker}</span>
+        {kicker && (
+          <span className={`log-label hidden text-[0.58rem] sm:block ${eyebrowColor}`}>
+            {kicker}
+          </span>
+        )}
         <span
           className={`block font-[family-name:var(--font-display)] font-bold tracking-tight ${titleSize} ${titleColor}`}
         >

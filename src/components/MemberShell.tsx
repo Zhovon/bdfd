@@ -32,7 +32,7 @@ export default function MemberShell({ user, unread, children }: Props) {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-line bg-husk/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-          <Brand href="/portal" title={t.brand.membersArea} size="sm" />
+          <Brand href="/portal" title={t.brand.membersArea} size="sm" eyebrow="" />
           <div className="flex items-center gap-3">
             <LangToggle />
             {user.isAdmin && (
