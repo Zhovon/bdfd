@@ -26,28 +26,46 @@ export const modules: Module[] = [
     blurb: "About the association and committee, official notices, and neutral election information.",
   },
   {
+    code: "WLF",
+    slug: "welfare",
+    title: "Service & Welfare Activities",
+    blurb: "Support notices for colleagues in need and welfare matters.",
+  },
+  {
     code: "TRV",
     slug: "travel",
     title: "Travel & Tourism",
     blurb: "Tour programmes, travel plans, shared photos and the next-trip poll.",
   },
   {
-    code: "WLF",
-    slug: "welfare",
-    title: "Welfare",
-    blurb: "Support notices for colleagues in need and welfare matters.",
-  },
-  {
     code: "CND",
     slug: "condolence",
-    title: "Condolence",
+    title: "Condolence & Sympathy",
     blurb: "Remembering colleagues and standing by their families.",
+  },
+  {
+    code: "TRN",
+    slug: "transfer",
+    title: "Transfer & Retirement Info",
+    blurb: "Information regarding transfers and retirements of officers.",
   },
   {
     code: "BLD",
     slug: "blood",
-    title: "Blood Directory",
+    title: "List of Blood Donors",
     blurb: "Volunteer donor officers, searchable by blood group.",
+  },
+  {
+    code: "PRT",
+    slug: "portal_info",
+    title: "Information Portal",
+    blurb: "General information and resources.",
+  },
+  {
+    code: "GAL",
+    slug: "gallery",
+    title: "Photo Gallery",
+    blurb: "Shared photo galleries and memories.",
   },
 ];
 
@@ -65,6 +83,10 @@ export const CATEGORY_META: Record<string, { label: string; accent: string; tint
   welfare: { label: "Welfare", accent: "#D21034", tint: "rgba(210,16,52,0.10)" },
   condolence: { label: "Condolence", accent: "#5A6B63", tint: "rgba(90,107,99,0.14)" },
   association: { label: "Association", accent: "#0A3B2C", tint: "rgba(10,59,44,0.10)" },
+  transfer: { label: "Transfer", accent: "#0369A1", tint: "rgba(3,105,161,0.10)" },
+  blood: { label: "Blood", accent: "#BE123C", tint: "rgba(190,18,60,0.10)" },
+  portal_info: { label: "Info", accent: "#0F766E", tint: "rgba(15,118,110,0.10)" },
+  gallery: { label: "Gallery", accent: "#6D28D9", tint: "rgba(109,40,217,0.10)" },
 };
 
 export const categoryMeta = (c: string) =>

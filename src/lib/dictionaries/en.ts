@@ -73,25 +73,40 @@ export const en = {
       blurb: "About the association and committee, official notices, and neutral election information.",
       label: "Association",
     },
+    welfare: {
+      title: "Service & Welfare Activities",
+      blurb: "Support notices for colleagues in need and welfare matters.",
+      label: "Welfare",
+    },
     travel: {
       title: "Travel & Tourism",
       blurb: "Tour programmes, travel plans, shared photos and the next-trip poll.",
       label: "Travel",
     },
-    welfare: {
-      title: "Welfare",
-      blurb: "Support notices for colleagues in need and welfare matters.",
-      label: "Welfare",
-    },
     condolence: {
-      title: "Condolence",
+      title: "Condolence & Sympathy",
       blurb: "Remembering colleagues and standing by their families.",
       label: "Condolence",
     },
+    transfer: {
+      title: "Transfer & Retirement Info",
+      blurb: "Information regarding transfers and retirements of officers.",
+      label: "Transfer",
+    },
     blood: {
-      title: "Blood Directory",
+      title: "List of Blood Donors",
       blurb: "Volunteer donor officers, searchable by blood group.",
-      label: "Blood",
+      label: "Blood Donors",
+    },
+    portal_info: {
+      title: "Information Portal",
+      blurb: "General information and resources.",
+      label: "Info Portal",
+    },
+    gallery: {
+      title: "Photo Gallery",
+      blurb: "Shared photo galleries and memories.",
+      label: "Gallery",
     },
   },
   dashboard: {
