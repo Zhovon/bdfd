@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import { pool, ensureSchema, isDbId, withTransaction } from "@/lib/db";
 import { pageWindow, type Paged } from "@/lib/paging";
 
-export type PostCategory = "travel" | "welfare" | "condolence" | "association";
+export type PostCategory = "travel" | "welfare" | "condolence" | "association" | "transfer" | "portal_info" | "gallery";
 
 /**
  * A post can carry a payment intent:
