@@ -7,7 +7,7 @@ import { useI18n } from "@/components/I18nProvider";
 import ImageInput from "@/components/ImageInput";
 import { thumbUrl } from "@/lib/media";
 
-const categories = ["association", "welfare", "travel", "condolence", "transfer", "portal_info", "gallery"] as const;
+const categories = ["association", "welfare", "travel", "condolence", "transfer", "portal_info"] as const;
 
 const paymentModes = [
   { value: "none", label: "payModeNone" },

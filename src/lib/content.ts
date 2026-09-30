@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import { pool, ensureSchema, isDbId, withTransaction } from "@/lib/db";
 import { pageWindow, type Paged } from "@/lib/paging";
 
-export type PostCategory = "travel" | "welfare" | "condolence" | "association" | "transfer" | "portal_info" | "gallery";
+export type PostCategory = "travel" | "welfare" | "condolence" | "association" | "transfer" | "portal_info";
 
 /**
  * A post can carry a payment intent:
@@ -625,4 +625,59 @@ export async function reopenPoll(id: number): Promise<void> {
 export async function deletePoll(id: number): Promise<void> {
   await ensureSchema();
   await pool.query(`DELETE FROM polls WHERE id = $1`, [id]);
+}
+
+export type GalleryImage = {
+  url: string;
+  postId: number;
+  postTitle: string;
+  postCategory: PostCategory;
+  createdAt: Date;
+};
+
+export async function getGalleryImagesPaged(page: number): Promise<Paged<GalleryImage>> {
+  await ensureSchema();
+  const perPage = 24; // 24 images per page
+  const { rows: cnt } = await pool.query<{ total: number }>(`
+    WITH all_images AS (
+      SELECT i.url
+      FROM post_images i
+      UNION
+      SELECT p.image_url AS url
+      FROM posts p
+      WHERE p.image_url IS NOT NULL
+    )
+    SELECT COUNT(*)::int AS total FROM all_images
+  `);
+  
+  const total = Number(cnt[0].total);
+  const { page: current, pageCount, offset } = pageWindow(total, page, perPage);
+
+  const { rows } = await pool.query<{ post_id: number; title: string; category: string; created_at: Date; url: string }>(`
+    WITH all_images AS (
+      SELECT p.id AS post_id, p.title, p.category, p.created_at, i.url
+      FROM post_images i
+      JOIN posts p ON p.id = i.post_id
+      UNION
+      SELECT p.id AS post_id, p.title, p.category, p.created_at, p.image_url AS url
+      FROM posts p
+      WHERE p.image_url IS NOT NULL
+    )
+    SELECT post_id, title, category, created_at, url FROM all_images
+    ORDER BY created_at DESC, url ASC
+    LIMIT $1 OFFSET $2
+  `, [perPage, offset]);
+
+  return {
+    items: rows.map(r => ({
+      url: r.url,
+      postId: r.post_id,
+      postTitle: r.title,
+      postCategory: r.category as PostCategory,
+      createdAt: r.created_at
+    })),
+    total,
+    page: current,
+    pageCount
+  };
 }
