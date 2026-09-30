@@ -640,10 +640,10 @@ export async function getGalleryImagesPaged(page: number): Promise<Paged<Gallery
   const perPage = 24; // 24 images per page
   const { rows: cnt } = await pool.query<{ total: number }>(`
     WITH all_images AS (
-      SELECT i.url
+      SELECT i.post_id, i.url
       FROM post_images i
       UNION
-      SELECT p.image_url AS url
+      SELECT p.id AS post_id, p.image_url AS url
       FROM posts p
       WHERE p.image_url IS NOT NULL
     )

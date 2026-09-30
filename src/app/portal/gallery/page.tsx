@@ -49,14 +49,14 @@ export default async function GalleryPage({
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/20 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                  <span
-                    className="text-[0.65rem] font-bold uppercase tracking-wider"
-                    style={{ color: meta.accent }}
-                  >
-                    {t.boards[img.postCategory]?.label || meta.label}
-                  </span>
-                  <span className="mt-0.5 line-clamp-2 text-xs font-medium text-white shadow-black drop-shadow-md">
+                <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/30 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.accent }} />
+                    <span className="text-[0.65rem] font-bold uppercase tracking-wider text-white/90 drop-shadow-md">
+                      {t.boards[img.postCategory]?.label || meta.label}
+                    </span>
+                  </div>
+                  <span className="mt-1 line-clamp-2 text-xs font-medium text-white shadow-black drop-shadow-md">
                     {img.postTitle}
                   </span>
                 </div>
