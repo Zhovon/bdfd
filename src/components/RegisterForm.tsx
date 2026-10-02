@@ -9,9 +9,9 @@ import { useI18n } from "@/components/I18nProvider";
 
 type Key =
   | "fullName"
-  | "officialEmail"
+  | "email"
   | "mobile"
-  | "serviceId"
+  | "address"
   | "designation"
   | "posting"
   | "password"
@@ -21,9 +21,9 @@ type Labels = ReturnType<typeof useI18n>["t"]["register"];
 
 const fields: { key: Key; label: keyof Labels; type?: string; full?: boolean; hint?: keyof Labels }[] = [
   { key: "fullName", label: "fullName", full: true },
-  { key: "officialEmail", label: "email", type: "email" },
+  { key: "email", label: "email", type: "email" },
   { key: "mobile", label: "mobile", type: "tel" },
-  { key: "serviceId", label: "serviceId" },
+  { key: "address", label: "address" },
   { key: "designation", label: "designation" },
   { key: "posting", label: "posting", full: true },
   { key: "password", label: "password", type: "password", hint: "passwordHint" },

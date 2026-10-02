@@ -88,10 +88,12 @@ export async function updateProfileAction(_prev: ProfileState, formData: FormDat
   const mobile = str(formData.get("mobile"));
   const designation = str(formData.get("designation"));
   const posting = str(formData.get("posting"));
+  const address = str(formData.get("address"));
   const bloodGroup = str(formData.get("bloodGroup")) || null;
   const bloodAvailable = formData.get("bloodAvailable") === "on";
 
   if (!/^[0-9+\-\s]{6,20}$/.test(mobile)) return { ok: false, message: m.enterMobile };
+  if (!address) return { ok: false, message: m.enterAddress };
   if (!designation || !posting) return { ok: false, message: m.designationPosting };
 
   let avatarUrl: string | null = null;
@@ -102,7 +104,7 @@ export async function updateProfileAction(_prev: ProfileState, formData: FormDat
   }
 
   try {
-    await updateProfile(user.id, { mobile, designation, posting, bloodGroup, bloodAvailable, avatarUrl });
+    await updateProfile(user.id, { mobile, designation, posting, address, bloodGroup, bloodAvailable, avatarUrl });
   } catch (err) {
     await deleteUploads([avatarUrl]);
     throw err;

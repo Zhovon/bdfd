@@ -365,10 +365,11 @@ export type EditPost = {
   title: string;
   excerpt: string;
   newCover: string[]; // newly uploaded cover photos to append
+  coverOrder: number[]; // existing cover photo ids in desired order
   removeImageIds: number[]; // existing image ids to delete (cover or section)
   // Sections in display order. A block with an id already exists (update it in
   // place so its images survive); a null id is a brand-new section to insert.
-  blocks: { id: number | null; heading: string; body: string; newImages: string[] }[];
+  blocks: { id: number | null; heading: string; body: string; newImages: string[]; imageOrder: number[] }[];
   videos: string[];
   newPdfUrl: string | null; // replacement PDF, if uploaded
   removePdf: boolean;
@@ -433,6 +434,14 @@ async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promi
     keepIds,
   ]);
 
+  // Update existing cover images order
+  for (let i = 0; i < input.coverOrder.length; i++) {
+    await db.query(
+      `UPDATE post_images SET sort_order = $1 WHERE id = $2 AND post_id = $3 AND block_id IS NULL`,
+      [i, input.coverOrder[i], id]
+    );
+  }
+
   // Upsert each surviving/new section in display order, then append its uploads.
   for (let i = 0; i < input.blocks.length; i++) {
     const b = input.blocks[i];
@@ -450,6 +459,15 @@ async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promi
       );
       blockId = br[0].id;
     }
+    
+    // Update existing section images order
+    for (let j = 0; j < b.imageOrder.length; j++) {
+      await db.query(
+        `UPDATE post_images SET sort_order = $1 WHERE id = $2 AND post_id = $3 AND block_id = $4`,
+        [j, b.imageOrder[j], id, blockId]
+      );
+    }
+    
     await appendImages(db, id, blockId, b.newImages);
   }
 

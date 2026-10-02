@@ -140,7 +140,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
           <span className="log-label flex items-center gap-2 text-field">
             {e.currentCover} <span className="text-stone">· {e.tickToRemove}</span>
           </span>
-          <PhotoGrid photos={initial!.cover} removeLabel={t.common.remove} />
+          <PhotoGrid initialPhotos={initial!.cover} removeLabel={t.common.remove} orderName="coverOrder" />
         </div>
       )}
 
@@ -273,7 +273,7 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
                 <span className="log-label flex items-center gap-2 text-field">
                   {e.sectionPhotos} <span className="text-stone">· {e.tickToRemove}</span>
                 </span>
-                <PhotoGrid photos={s.images} removeLabel={t.common.remove} />
+                <PhotoGrid initialPhotos={s.images} removeLabel={t.common.remove} orderName={`block-images-order-${i}`} />
               </div>
             )}
             <label className="mt-3 block">
@@ -329,12 +329,52 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
   );
 }
 
-/** Existing photos, each with a tick-to-remove overlay (posts by image id). */
-function PhotoGrid({ photos, removeLabel }: { photos: Photo[]; removeLabel: string }) {
+/** Existing photos, with tick-to-remove and drag-and-drop ordering. */
+function PhotoGrid({ initialPhotos, removeLabel, orderName }: { initialPhotos: Photo[]; removeLabel: string; orderName?: string }) {
+  const [photos, setPhotos] = useState(initialPhotos);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPhotos(initialPhotos);
+  }, [initialPhotos]);
+
+  const onDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) return;
+
+    const newPhotos = [...photos];
+    const draggedPhoto = newPhotos[draggedIdx];
+    newPhotos.splice(draggedIdx, 1);
+    newPhotos.splice(index, 0, draggedPhoto);
+    setPhotos(newPhotos);
+    setDraggedIdx(index);
+  };
+
+  const onDragEnd = () => {
+    setDraggedIdx(null);
+  };
+
   return (
     <div className="mt-2 flex flex-wrap gap-3">
-      {photos.map((img) => (
-        <label key={img.id} className="relative block cursor-pointer">
+      {orderName && (
+        <input type="hidden" name={orderName} value={photos.map((p) => p.id).join(",")} />
+      )}
+      {photos.map((img, index) => (
+        <label
+          key={img.id}
+          className={`relative block cursor-grab active:cursor-grabbing transition-transform ${
+            draggedIdx === index ? "scale-105 opacity-50" : ""
+          }`}
+          draggable
+          onDragStart={(e) => onDragStart(e, index)}
+          onDragOver={(e) => onDragOver(e, index)}
+          onDragEnd={onDragEnd}
+        >
           <input type="checkbox" name="removeImage" value={img.id} className="peer sr-only" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

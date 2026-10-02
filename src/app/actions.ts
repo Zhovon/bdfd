@@ -16,7 +16,7 @@ const str = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.trim() 
 
 /* ----------------------------- Registration ----------------------------- */
 
-type RegField = "fullName" | "officialEmail" | "mobile" | "serviceId" | "designation" | "posting" | "password" | "confirm" | "captcha";
+type RegField = "fullName" | "email" | "mobile" | "address" | "designation" | "posting" | "password" | "confirm" | "captcha";
 
 export type RegisterState = {
   ok: boolean;
@@ -30,9 +30,9 @@ export async function registerUser(
 ): Promise<RegisterState> {
   const v = {
     fullName: str(formData.get("fullName")),
-    officialEmail: str(formData.get("officialEmail")).toLowerCase(),
+    email: str(formData.get("email")).toLowerCase(),
     mobile: str(formData.get("mobile")),
-    serviceId: str(formData.get("serviceId")),
+    address: str(formData.get("address")),
     designation: str(formData.get("designation")),
     posting: str(formData.get("posting")),
     password: str(formData.get("password")),
@@ -41,9 +41,9 @@ export async function registerUser(
   const m = (await getDict()).msg;
   const fieldErrors: RegisterState["fieldErrors"] = {};
   if (v.fullName.length < 2) fieldErrors.fullName = m.enterName;
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.officialEmail)) fieldErrors.officialEmail = m.enterEmail;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) fieldErrors.email = m.enterEmail;
   if (!/^[0-9+\-\s]{6,20}$/.test(v.mobile)) fieldErrors.mobile = m.enterMobile;
-  if (!v.serviceId) fieldErrors.serviceId = m.enterServiceId;
+  if (!v.address) fieldErrors.address = m.enterAddress;
   if (!v.designation) fieldErrors.designation = m.enterDesignation;
   if (!v.posting) fieldErrors.posting = m.enterPosting;
   if (v.password.length < 8) fieldErrors.password = m.passwordShort;
@@ -63,16 +63,16 @@ export async function registerUser(
     const passwordHash = await hashPassword(v.password);
     await createUser({
       fullName: v.fullName,
-      officialEmail: v.officialEmail,
+      email: v.email,
       mobile: v.mobile,
-      serviceId: v.serviceId,
+      address: v.address,
       designation: v.designation,
       posting: v.posting,
       passwordHash,
     });
   } catch (err) {
     if (err instanceof EmailTakenError) {
-      return { ok: false, message: m.emailTaken, fieldErrors: { officialEmail: m.emailTaken } };
+      return { ok: false, message: m.emailTaken, fieldErrors: { email: m.emailTaken } };
     }
     console.error("registerUser failed:", err);
     return { ok: false, message: m.registerFailed };
@@ -125,7 +125,7 @@ export type ForgotState = { done: boolean; message: string } | null;
 export async function requestPasswordReset(_prev: ForgotState, formData: FormData): Promise<ForgotState> {
   const email = str(formData.get("email")).toLowerCase();
   const m = (await getDict()).msg;
-  if (!email) return { done: false, message: m.enterOfficialEmail };
+  if (!email) return { done: false, message: m.enterEmail };
 
   if (!(await verifyCaptcha(str(formData.get("cf-turnstile-response"))))) {
     return { done: false, message: m.captchaFailed };
@@ -142,7 +142,7 @@ export async function requestPasswordReset(_prev: ForgotState, formData: FormDat
     const base = process.env.APP_URL ?? "http://localhost:3000";
     const url = `${base}/reset?token=${makeResetToken(user.id, user.session_version)}`;
     const { subject, text } = buildEmail({ kind: "reset", name: user.full_name, url });
-    await sendMail(user.official_email, subject, text);
+    await sendMail(user.email, subject, text);
   }
 
   return { done: true, message: m.resetSent };

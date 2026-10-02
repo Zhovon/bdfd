@@ -96,7 +96,7 @@ export default async function MembershipPage({
                   {u.designation} · {u.posting}
                 </p>
                 <p className="log-label mt-2 normal-case tracking-normal">
-                  {u.official_email} · {u.mobile} · ID: {u.service_id}
+                  {u.email} · {u.mobile} · {u.address}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export default async function MembershipPage({
                   <span className="block text-stone">{u.posting}</span>
                 </td>
                 <td className="py-3 pr-4 text-field/90">
-                  {u.official_email}
+                  {u.email}
                   <span className="block tabular-nums text-stone">{u.mobile}</span>
                 </td>
                 <td className="py-3 pr-4">

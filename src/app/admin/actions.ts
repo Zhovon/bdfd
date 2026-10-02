@@ -52,11 +52,11 @@ async function changeStatus(rawId: FormDataEntryValue | null, status: UserStatus
   // The welcome email/notification is for a first approval — not for unblocking.
   if (status === "approved" && firstApproval) {
     const { subject, text } = buildEmail({ kind: "approved", name: user.full_name });
-    await sendMail(user.official_email, subject, text);
+    await sendMail(user.email, subject, text);
     await notifyUser(user.id, { kind: "accountApproved" }, "/portal");
   } else if (status === "rejected" && firstApproval) {
     const { subject, text } = buildEmail({ kind: "rejected", name: user.full_name });
-    await sendMail(user.official_email, subject, text);
+    await sendMail(user.email, subject, text);
   }
   revalidatePath("/admin");
 }
@@ -103,7 +103,7 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   const category = str(formData.get("category")) as PostCategory;
   const title = str(formData.get("title"));
   const excerpt = str(formData.get("excerpt"));
-  if (!["travel", "welfare", "condolence", "association"].includes(category))
+  if (!["travel", "welfare", "condolence", "association", "transfer", "portal_info"].includes(category))
     return { ok: false, message: m.chooseBoard };
   if (!title) return { ok: false, message: m.giveTitle };
 
@@ -178,7 +178,7 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
   const category = str(formData.get("category")) as PostCategory;
   const title = str(formData.get("title"));
   const excerpt = str(formData.get("excerpt"));
-  if (!["travel", "welfare", "condolence", "association"].includes(category))
+  if (!["travel", "welfare", "condolence", "association", "transfer", "portal_info"].includes(category))
     return { ok: false, message: m.chooseBoard };
   if (!title) return { ok: false, message: m.giveTitle };
 
@@ -213,18 +213,21 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
     return { ok: false, message: err instanceof UploadError ? m[err.code] : m.pdfFailed };
   }
   const newCover = await saveUploads(formData.getAll("cover"), `post-${id}-${stamp}`);
+  const coverOrder = str(formData.get("coverOrder")).split(",").map(Number).filter(isDbId);
 
   const blockCount = Math.min(Number(str(formData.get("blockCount"))) || 0, MAX_BLOCKS);
-  const blocks: { id: number | null; heading: string; body: string; newImages: string[] }[] = [];
+  const blocks: { id: number | null; heading: string; body: string; newImages: string[]; imageOrder: number[] }[] = [];
   for (let i = 0; i < blockCount; i++) {
     const blockId = parseId(formData.get(`block-id-${i}`));
     const heading = str(formData.get(`block-heading-${i}`));
     const body = str(formData.get(`block-body-${i}`));
     const newImages = await saveUploads(formData.getAll(`block-images-${i}`), `post-${id}-${stamp}-b${i}`);
+    const imageOrder = str(formData.get(`block-images-order-${i}`)).split(",").map(Number).filter(isDbId);
+    
     // Drop only brand-new sections left completely empty; keep existing ones so
     // the user can clear text yet retain the section's photos.
     if (blockId === null && !heading && !body && newImages.length === 0) continue;
-    blocks.push({ id: blockId, heading, body, newImages });
+    blocks.push({ id: blockId, heading, body, newImages, imageOrder });
   }
 
   let dropped: string[];
@@ -234,6 +237,7 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
       title,
       excerpt,
       newCover,
+      coverOrder,
       removeImageIds,
       blocks,
       videos,

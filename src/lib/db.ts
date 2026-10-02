@@ -59,11 +59,11 @@ export type UserStatus = "pending" | "approved" | "rejected" | "blocked";
 export type User = {
   id: number;
   full_name: string;
-  official_email: string;
+  email: string;
   mobile: string;
-  service_id: string;
-  designation: string;
+    designation: string;
   posting: string;
+  address: string | null;
   role: UserRole;
   status: UserStatus;
   avatar_url: string | null;
@@ -80,7 +80,7 @@ let schemaReady: Promise<void> | null = null;
 
 // Bump when the DDL below changes so the next deploy re-runs the migration once.
 // Between changes, cold serverless instances skip the ~20 DDL round-trips.
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
@@ -341,6 +341,12 @@ async function migrate(db: Queryable): Promise<void> {
     `CREATE INDEX IF NOT EXISTS donations_txref_idx ON donations (lower(transaction_ref))`,
   );
 
+  
+  // V6 Migrations
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT`);
+  await db.query(`ALTER TABLE users RENAME COLUMN official_email TO email`).catch(() => {});
+  await db.query(`ALTER TABLE users DROP COLUMN IF EXISTS service_id`).catch(() => {});
+
   await ensureAdmin(db);
   await seedPaymentMethods(db);
   await seedContent(db);
@@ -359,10 +365,10 @@ async function ensureAdmin(db: Queryable): Promise<void> {
   const hash = await hashPassword(password);
   await db.query(
     `INSERT INTO users
-       (full_name, official_email, mobile, service_id, designation, posting, password_hash, role, status, approved_at)
+       (full_name, email, mobile, designation, posting, address, password_hash, role, status, approved_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,'admin','approved', now())
-     ON CONFLICT (official_email) DO NOTHING`,
-    ["Portal Administrator", email.toLowerCase(), "—", "ADMIN", "Administrator", "Head Office", hash],
+     ON CONFLICT (email) DO NOTHING`,
+    ["Portal Administrator", email.toLowerCase(), "—", "Administrator", "Head Office", "", hash],
   );
 }
 
@@ -417,15 +423,15 @@ async function seedContent(db: Queryable): Promise<void> {
 /* ------------------------------- Users --------------------------------- */
 
 const PUBLIC_COLS =
-  "id, full_name, official_email, mobile, service_id, designation, posting, role, status, avatar_url, blood_group, blood_available, created_at, approved_at, session_version";
+  "id, full_name, email, mobile, designation, posting, address, role, status, avatar_url, blood_group, blood_available, created_at, approved_at, session_version";
 
 export type NewUser = {
   fullName: string;
-  officialEmail: string;
+  email: string;
   mobile: string;
-  serviceId: string;
-  designation: string;
+    designation: string;
   posting: string;
+  address: string | null;
   passwordHash: string;
 };
 
@@ -436,9 +442,9 @@ export async function createUser(u: NewUser): Promise<number> {
   try {
     const { rows } = await pool.query<{ id: number }>(
       `INSERT INTO users
-         (full_name, official_email, mobile, service_id, designation, posting, password_hash)
+         (full_name, email, mobile, designation, posting, address, password_hash)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [u.fullName, u.officialEmail, u.mobile, u.serviceId, u.designation, u.posting, u.passwordHash],
+      [u.fullName, u.email, u.mobile, u.designation, u.posting, u.address || null, u.passwordHash],
     );
     return rows[0].id;
   } catch (err: unknown) {
@@ -452,7 +458,7 @@ export async function createUser(u: NewUser): Promise<number> {
 export async function getUserByEmail(email: string): Promise<UserWithHash | null> {
   await ensureSchema();
   const { rows } = await pool.query<UserWithHash>(
-    `SELECT ${PUBLIC_COLS}, password_hash FROM users WHERE official_email = $1`,
+    `SELECT ${PUBLIC_COLS}, password_hash FROM users WHERE email = $1`,
     [email.toLowerCase()],
   );
   return rows[0] ?? null;
@@ -492,9 +498,8 @@ export async function searchUsers(opts: {
   await ensureSchema();
   const pattern = likePattern(opts.q);
   const where = `WHERE ($1::text IS NULL OR status = $1)
-    AND ($2::text IS NULL OR full_name ILIKE $2 ESCAPE '\\' OR official_email ILIKE $2 ESCAPE '\\'
-         OR mobile ILIKE $2 ESCAPE '\\' OR service_id ILIKE $2 ESCAPE '\\'
-         OR designation ILIKE $2 ESCAPE '\\' OR posting ILIKE $2 ESCAPE '\\')`;
+    AND ($2::text IS NULL OR full_name ILIKE $2 ESCAPE '\\' OR email ILIKE $2 ESCAPE '\\'
+         OR mobile ILIKE $2 ESCAPE '\\'          OR designation ILIKE $2 ESCAPE '\\' OR posting ILIKE $2 ESCAPE '\\' OR address ILIKE $2 ESCAPE '\\')`;
   const params = [opts.status ?? null, pattern];
   const { rows: cnt } = await pool.query<{ n: number }>(
     `SELECT count(*)::int AS n FROM users ${where}`,
@@ -575,6 +580,7 @@ export type ProfileUpdate = {
   mobile: string;
   designation: string;
   posting: string;
+  address: string;
   bloodGroup: string | null;
   bloodAvailable: boolean;
   avatarUrl?: string | null;
@@ -583,9 +589,9 @@ export type ProfileUpdate = {
 export async function updateProfile(id: number, p: ProfileUpdate): Promise<void> {
   await ensureSchema();
   await pool.query(
-    `UPDATE users SET mobile=$2, designation=$3, posting=$4, blood_group=$5, blood_available=$6,
-       avatar_url = COALESCE($7, avatar_url)
+    `UPDATE users SET mobile=$2, designation=$3, posting=$4, address=$5, blood_group=$6, blood_available=$7,
+       avatar_url = COALESCE($8, avatar_url)
      WHERE id = $1`,
-    [id, p.mobile, p.designation, p.posting, p.bloodGroup, p.bloodAvailable, p.avatarUrl ?? null],
+    [id, p.mobile, p.designation, p.posting, p.address, p.bloodGroup, p.bloodAvailable, p.avatarUrl ?? null],
   );
 }

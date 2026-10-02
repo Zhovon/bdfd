@@ -16,8 +16,8 @@ export default async function ProfilePage() {
         <ProfileForm
           user={{
             full_name: user.full_name,
-            official_email: user.official_email,
-            service_id: user.service_id,
+            email: user.email,
+            address: user.address,
             mobile: user.mobile,
             designation: user.designation,
             posting: user.posting,

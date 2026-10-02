@@ -11,9 +11,9 @@ import { thumbUrl } from "@/lib/media";
 type Props = {
   user: {
     full_name: string;
-    official_email: string;
-    service_id: string;
+    email: string;
     mobile: string;
+    address: string | null;
     designation: string;
     posting: string;
     blood_group: string | null;
@@ -50,10 +50,9 @@ export default function ProfileForm({ user }: Props) {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <ReadOnly label={t.fullName} value={user.full_name} />
-        <ReadOnly label={t.email} value={user.official_email} />
-        <ReadOnly label={t.serviceId} value={user.service_id} />
-
+        <ReadOnly label={t.email} value={user.email} />
         <Field name="mobile" label={t.mobile} defaultValue={user.mobile} />
+        <Field name="address" label={t.address} defaultValue={user.address || ""} full />
         <Field name="designation" label={t.designation} defaultValue={user.designation} />
         <Field name="posting" label={t.posting} defaultValue={user.posting} full />
       </div>

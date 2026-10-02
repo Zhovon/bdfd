@@ -2,7 +2,10 @@ import { getSessionUser, isAdmin } from "@/lib/session";
 import { listUsers } from "@/lib/db";
 
 const csvCell = (v: string | number | null) => {
-  const s = v == null ? "" : String(v);
+  let s = v == null ? "" : String(v);
+  if (/^[=+\-@]/.test(s)) {
+    s = "'" + s;
+  }
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
@@ -14,12 +17,12 @@ export async function GET() {
 
   const members = await listUsers();
   const header = [
-    "id", "full_name", "official_email", "mobile", "service_id",
+    "id", "full_name", "email", "mobile", "address",
     "designation", "posting", "role", "status", "created_at",
   ];
   const rows = members.map((m) =>
     [
-      m.id, m.full_name, m.official_email, m.mobile, m.service_id,
+      m.id, m.full_name, m.email, m.mobile, m.address,
       m.designation, m.posting, m.role, m.status, m.created_at.toISOString(),
     ]
       .map(csvCell)
