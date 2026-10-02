@@ -50,7 +50,7 @@ export default async function TickersAdminPage() {
             className="w-full rounded-lg border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand"
           />
         </label>
-        <button type="submit" className="log-label rounded-lg bg-brand px-5 py-2 text-white transition-colors hover:bg-field">
+        <button type="submit" className="rounded-lg bg-brand px-5 py-2 font-semibold text-husk transition-colors hover:bg-field mt-2">
           Add Ticker
         </button>
       </form>
