@@ -201,6 +201,8 @@ export const en = {
   editor: {
     board: "Board",
     title: "Title",
+    priority: "Priority Number",
+    priorityHint: "Higher number = higher rank (0 is default)",
     summary: "Summary",
     summaryHint: "shown on the card",
     coverPhotos: "Cover photos",

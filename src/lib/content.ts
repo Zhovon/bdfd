@@ -24,6 +24,7 @@ type PostRow = {
   payment_mode: PaymentMode;
   fee_amount: string | null; // NUMERIC comes back as string from pg
   payment_open: boolean;
+  priority: number;
   created_at: Date;
 };
 
@@ -44,6 +45,7 @@ export type PostCard = PostPayment & {
   photoCount: number;
   hasVideo: boolean;
   hasPdf: boolean;
+  priority: number;
   created_at: Date;
 };
 
@@ -60,6 +62,7 @@ export type Post = PostPayment & {
   blocks: PostBlock[];
   videos: string[]; // external video links (YouTube/Vimeo/Facebook)
   pdfUrl: string | null; // downloadable programme PDF
+  priority: number;
   created_at: Date;
 };
 
@@ -74,7 +77,7 @@ const paymentOf = (r: PostRow): PostPayment => ({
 
 /** The post columns every read needs (keeps SELECTs in sync). */
 const POST_COLS =
-  "id, category, title, body, excerpt, image_url, pdf_url, payment_mode, fee_amount, payment_open, created_at";
+  "id, category, title, body, excerpt, image_url, pdf_url, payment_mode, fee_amount, payment_open, priority, created_at";
 
 /** Cover images = post_images with no block_id; falls back to legacy image_url. */
 async function coverImages(postIds: number[]): Promise<Map<number, string[]>> {
@@ -117,6 +120,7 @@ async function toCards(rows: PostRow[]): Promise<PostCard[]> {
       photoCount: imgs.length,
       hasVideo: withVideo.has(r.id),
       hasPdf: !!r.pdf_url,
+      priority: r.priority,
       created_at: r.created_at,
       ...paymentOf(r),
     };
@@ -147,7 +151,7 @@ async function pagePosts(where: string, params: unknown[], page: number): Promis
   const { page: current, pageCount, offset } = pageWindow(total, page, POSTS_PER_PAGE);
   const { rows } = await pool.query<PostRow>(
     `SELECT ${POST_COLS} FROM posts ${where}
-     ORDER BY created_at DESC, id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+     ORDER BY priority DESC, created_at DESC, id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, POSTS_PER_PAGE, offset],
   );
   return { items: await toCards(rows), total, page: current, pageCount };
@@ -177,7 +181,7 @@ export async function countPosts(category?: PostCategory): Promise<number> {
 export async function latestPosts(limit: number): Promise<PostCard[]> {
   await ensureSchema();
   const { rows } = await pool.query<PostRow>(
-    `SELECT ${POST_COLS} FROM posts ORDER BY created_at DESC, id DESC LIMIT $1`,
+    `SELECT ${POST_COLS} FROM posts ORDER BY priority DESC, created_at DESC, id DESC LIMIT $1`,
     [limit],
   );
   return toCards(rows);
@@ -227,6 +231,7 @@ export async function getPost(id: number): Promise<Post | null> {
     blocks,
     videos: vids.map((v) => v.url),
     pdfUrl: p.pdf_url,
+    priority: p.priority,
     created_at: p.created_at,
     ...paymentOf(p),
   };
@@ -243,6 +248,7 @@ export type NewPost = {
   pdfUrl: string | null;
   paymentMode: PaymentMode;
   feeAmount: number | null;
+  priority: number;
 };
 
 export async function createPost(input: NewPost): Promise<number> {
@@ -254,9 +260,9 @@ async function insertPost(db: PoolClient, input: NewPost): Promise<number> {
   // A participation post keeps its fee; other modes never carry one.
   const fee = input.paymentMode === "participation" ? input.feeAmount : null;
   const { rows } = await db.query<{ id: number }>(
-    `INSERT INTO posts (category, title, body, excerpt, author_id, image_url, pdf_url, payment_mode, fee_amount)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-    [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null, input.pdfUrl, input.paymentMode, fee],
+    `INSERT INTO posts (category, title, body, excerpt, author_id, image_url, pdf_url, payment_mode, fee_amount, priority)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+    [input.category, input.title, "", input.excerpt, input.authorId, input.cover[0] ?? null, input.pdfUrl, input.paymentMode, fee, input.priority],
   );
   const postId = rows[0].id;
 
@@ -317,6 +323,7 @@ export type PostEditData = PostPayment & {
   excerpt: string;
   videos: string[];
   pdfUrl: string | null;
+  priority: number;
   cover: ImageRef[];
   blocks: { id: number; heading: string; body: string; images: ImageRef[] }[];
 };
@@ -349,6 +356,7 @@ export async function getPostForEdit(id: number): Promise<PostEditData | null> {
     excerpt: p.excerpt ?? "", // raw excerpt for editing (not the computed one)
     videos: vids.map((v) => v.url),
     pdfUrl: p.pdf_url,
+    priority: p.priority,
     ...paymentOf(p),
     cover: imgs.filter((i) => i.block_id === null).map((i) => ({ id: i.id, url: i.url })),
     blocks: blockRows.map((b) => ({
@@ -375,6 +383,7 @@ export type EditPost = {
   removePdf: boolean;
   paymentMode: PaymentMode;
   feeAmount: number | null;
+  priority: number;
 };
 
 /** Append image urls to a group (cover = null block, or a section) after its
@@ -494,8 +503,8 @@ async function applyPostEdit(db: PoolClient, id: number, input: EditPost): Promi
     [id],
   );
   await db.query(
-    `UPDATE posts SET category=$2, title=$3, excerpt=$4, image_url=$5, payment_mode=$6, fee_amount=$7 WHERE id=$1`,
-    [id, input.category, input.title, input.excerpt, firstImg[0]?.url ?? null, input.paymentMode, fee],
+    `UPDATE posts SET category=$2, title=$3, excerpt=$4, image_url=$5, payment_mode=$6, fee_amount=$7, priority=$8 WHERE id=$1`,
+    [id, input.category, input.title, input.excerpt, firstImg[0]?.url ?? null, input.paymentMode, fee, input.priority],
   );
 
   // Replace video links.

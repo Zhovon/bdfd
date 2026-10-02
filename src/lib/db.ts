@@ -80,7 +80,7 @@ let schemaReady: Promise<void> | null = null;
 
 // Bump when the DDL below changes so the next deploy re-runs the migration once.
 // Between changes, cold serverless instances skip the ~20 DDL round-trips.
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 /**
  * Create every table and seed defaults on first use. For a prototype this stands
@@ -342,10 +342,12 @@ async function migrate(db: Queryable): Promise<void> {
   );
 
   
-  // V6 Migrations
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT`);
   await db.query(`ALTER TABLE users RENAME COLUMN official_email TO email`).catch(() => {});
   await db.query(`ALTER TABLE users DROP COLUMN IF EXISTS service_id`).catch(() => {});
+
+  // V7 Migrations
+  await db.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0`);
 
   await ensureAdmin(db);
   await seedPaymentMethods(db);

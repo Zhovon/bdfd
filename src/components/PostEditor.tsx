@@ -31,6 +31,7 @@ export type EditInitial = {
   paymentMode: string;
   feeAmount: number | null;
   pdfUrl: string | null;
+  priority: number;
   cover: Photo[];
   blocks: { id: number; heading: string; body: string; images: Photo[] }[];
 };
@@ -108,6 +109,19 @@ export default function PostEditor({ initial }: { initial?: EditInitial }) {
             </option>
           ))}
         </select>
+      </label>
+      
+      <label>
+        <span className="log-label flex items-center gap-2 text-field">
+          {e.priority || "Priority Number"}{" "}
+          <span className="text-stone">· {e.priorityHint || "Higher number = higher rank (0 is default)"}</span>
+        </span>
+        <input
+          name="priority"
+          type="number"
+          defaultValue={initial?.priority ?? 0}
+          className={textInput}
+        />
       </label>
 
       <label>

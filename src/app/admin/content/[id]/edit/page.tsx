@@ -35,6 +35,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
             paymentMode: post.paymentMode,
             feeAmount: post.feeAmount,
             pdfUrl: post.pdfUrl,
+            priority: post.priority,
             cover: post.cover,
             blocks: post.blocks,
           }}

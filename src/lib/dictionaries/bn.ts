@@ -197,6 +197,8 @@ export const bn: typeof en = {
   editor: {
     board: "বোর্ড",
     title: "শিরোনাম",
+    priority: "প্রায়োরিটি নাম্বার",
+    priorityHint: "বড় নাম্বার = উপরে থাকবে (0 ডিফল্ট)",
     summary: "সারসংক্ষেপ",
     summaryHint: "কার্ডে দেখানো হয়",
     coverPhotos: "কভার ছবি",

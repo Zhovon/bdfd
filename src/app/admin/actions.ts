@@ -138,6 +138,8 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
     .split("\n")
     .map((v) => v.trim())
     .filter((v) => /^https?:\/\//i.test(v));
+    
+  const priority = Number(str(formData.get("priority"))) || 0;
 
   // Repeatable sections: block-heading-i / block-body-i / block-images-i.
   const blockCount = Math.min(Number(str(formData.get("blockCount"))) || 0, MAX_BLOCKS);
@@ -151,7 +153,7 @@ export async function addPost(_prev: PostFormState, formData: FormData): Promise
   }
 
   try {
-    await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, videos, pdfUrl, paymentMode, feeAmount });
+    await createPost({ category, title, excerpt, authorId: staff.id, cover, blocks, videos, pdfUrl, paymentMode, feeAmount, priority });
   } catch (err) {
     // Nothing was saved, so don't leave the uploaded files behind.
     await deleteUploads([pdfUrl, ...cover, ...blocks.flatMap((b) => b.images)]);
@@ -201,6 +203,8 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
     .map((v) => v.trim())
     .filter((v) => /^https?:\/\//i.test(v));
 
+  const priority = Number(str(formData.get("priority"))) || 0;
+
   const removeImageIds = formData
     .getAll("removeImage")
     .map((v) => Number(v))
@@ -245,6 +249,7 @@ export async function editPost(_prev: PostFormState, formData: FormData): Promis
       removePdf,
       paymentMode,
       feeAmount,
+      priority,
     });
   } catch (err) {
     // The edit rolled back, so the files uploaded for it are unused.
