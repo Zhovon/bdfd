@@ -19,7 +19,7 @@ export default async function globalSetup() {
   });
   if (res.status >= 500) throw new Error(`App failed to initialise the database (HTTP ${res.status}).`);
 
-  const { rows } = await db().query(`SELECT 1 FROM users WHERE official_email = $1`, [E2E.adminEmail]);
+  const { rows } = await db().query(`SELECT 1 FROM users WHERE email = $1`, [E2E.adminEmail]);
   if (rows.length !== 1) throw new Error("Bootstrap admin was not seeded.");
   await closeDb();
 }

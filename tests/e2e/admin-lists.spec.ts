@@ -5,13 +5,13 @@ import { closeDb, db, signIn } from "./support";
 test.describe("admin member list", () => {
   test.beforeAll(async () => {
     await db().query(
-      `INSERT INTO users (full_name, official_email, mobile, service_id, designation, posting, password_hash, status)
+      `INSERT INTO users (full_name, email, mobile, address, designation, posting, password_hash, status)
        SELECT 'Listed Officer ' || g, 'listed' || g || '@e2e.test', '0181' || lpad(g::text, 7, '0'), 'L-' || g,
               'AO', CASE WHEN g % 2 = 0 THEN 'Rajshahi' ELSE 'Sylhet' END, 'x', 'approved'
        FROM generate_series(1, 30) g`,
     );
     await db().query(
-      `INSERT INTO users (full_name, official_email, mobile, service_id, designation, posting, password_hash, status)
+      `INSERT INTO users (full_name, email, mobile, address, designation, posting, password_hash, status)
        VALUES ('Hundred%Sure', 'pct@e2e.test', '0', 'P', 'AO', 'Dhaka', 'x', 'approved')`,
     );
   });

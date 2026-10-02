@@ -45,7 +45,7 @@ export function resetToken(userId: number, version = 0): string {
 /** Sign a browser context in as a user (skips the login form) and pick a language. */
 export async function signIn(context: BrowserContext, email: string, lang: "en" | "bn" = "en") {
   const { rows } = await db().query<{ id: number; session_version: number }>(
-    `SELECT id, session_version FROM users WHERE official_email = $1`,
+    `SELECT id, session_version FROM users WHERE email = $1`,
     [email],
   );
   expect(rows[0], `no user ${email}`).toBeTruthy();
@@ -67,8 +67,8 @@ export async function createMember(opts: {
   passwordHash?: string;
 }): Promise<number> {
   const { rows } = await db().query<{ id: number }>(
-    `INSERT INTO users (full_name, official_email, mobile, service_id, designation, posting, password_hash, status, approved_at)
-     VALUES ($1, $2, '01711000000', 'SVC', 'AO', 'Dhaka', $3, $4, CASE WHEN $4 = 'approved' THEN now() END)
+    `INSERT INTO users (full_name, email, mobile, address, designation, posting, password_hash, status, approved_at)
+     VALUES ($1, $2, '01711000000', 'Dhaka, Bangladesh', 'AO', 'Dhaka', $3, $4, CASE WHEN $4 = 'approved' THEN now() END)
      RETURNING id`,
     [opts.name, opts.email, opts.passwordHash ?? "x", opts.status ?? "approved"],
   );
