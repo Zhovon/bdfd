@@ -349,6 +349,7 @@ function PhotoGrid({ initialPhotos, removeLabel, orderName }: { initialPhotos: P
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPhotos(initialPhotos);
   }, [initialPhotos]);
 
