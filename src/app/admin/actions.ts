@@ -363,7 +363,13 @@ export async function savePaymentMethod(formData: FormData) {
 export async function createTicker(formData: FormData): Promise<void> {
   await requireAdmin();
   const message = str(formData.get("message"));
-  const link = str(formData.get("link")) || null;
+  let link = str(formData.get("link")) || null;
+  const postId = str(formData.get("post_id"));
+  
+  if (postId) {
+    link = `/portal/notice/${postId}`;
+  }
+
   if (!message) return;
   const { pool, ensureSchema } = await import("@/lib/db");
   await ensureSchema();

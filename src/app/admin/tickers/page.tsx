@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/session";
 import { getDict } from "@/lib/i18n";
 import { pool, ensureSchema } from "@/lib/db";
 import { createTicker, toggleTicker, removeTicker } from "@/app/admin/actions";
-import { type Ticker } from "@/lib/content";
+import { latestPosts, type Ticker } from "@/lib/content";
 
 export default async function TickersAdminPage() {
   await requireAdmin();
@@ -10,8 +10,10 @@ export default async function TickersAdminPage() {
   
   await ensureSchema();
   const { rows } = await pool.query<Ticker>(
-    `SELECT id, message, active, created_at FROM tickers ORDER BY created_at DESC`
+    `SELECT id, message, link, active, created_at FROM tickers ORDER BY created_at DESC`
   );
+  
+  const posts = await latestPosts(100);
 
   return (
     <div className="max-w-2xl">
@@ -28,7 +30,19 @@ export default async function TickersAdminPage() {
             placeholder="e.g., Oct 25 – Registration deadline!"
             className="w-full rounded-lg border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand mb-4"
           />
-          <span className="log-label text-field block mb-2">Optional Link URL</span>
+          <span className="log-label text-field block mb-2">Link to a Post (Optional)</span>
+          <select
+            name="post_id"
+            className="w-full rounded-lg border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand mb-4"
+          >
+            <option value="">-- No link / Custom link below --</option>
+            {posts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+          <span className="log-label text-field block mb-2">Or Custom Link URL</span>
           <input
             name="link"
             type="url"
