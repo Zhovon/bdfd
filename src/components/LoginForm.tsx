@@ -28,7 +28,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
         <span className="log-label text-field">{t.auth.email}</span>
         <input
           name="email"
-          type="email"
+          type="text"
           autoFocus
           autoComplete="username"
           className="mt-2 w-full border-b-2 border-line bg-transparent pb-2 text-lg text-field outline-none transition-colors focus:border-brand"

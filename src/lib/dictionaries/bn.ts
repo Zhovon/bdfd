@@ -158,7 +158,7 @@ export const bn: typeof en = {
     register: "নিবন্ধন",
     forgotTitle: "পাসওয়ার্ড ভুলে গেছেন",
     resetTitle: "পাসওয়ার্ড রিসেট",
-    email: "ইমেইল",
+    email: "মেইল অথবা মোবাইল নং",
     password: "পাসওয়ার্ড",
     fullName: "পুরো নাম",
     confirmPassword: "পাসওয়ার্ড নিশ্চিত করুন",

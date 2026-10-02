@@ -470,11 +470,11 @@ export async function createUser(u: NewUser): Promise<number> {
   }
 }
 
-export async function getUserByEmail(email: string): Promise<UserWithHash | null> {
+export async function getUserByEmailOrPhone(identifier: string): Promise<UserWithHash | null> {
   await ensureSchema();
   const { rows } = await pool.query<UserWithHash>(
-    `SELECT ${PUBLIC_COLS}, password_hash FROM users WHERE email = $1`,
-    [email.toLowerCase()],
+    `SELECT ${PUBLIC_COLS}, password_hash FROM users WHERE email = $1 OR mobile = $1`,
+    [identifier.toLowerCase()],
   );
   return rows[0] ?? null;
 }

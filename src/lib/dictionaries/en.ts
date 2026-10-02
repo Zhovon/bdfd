@@ -162,7 +162,7 @@ export const en = {
     register: "Register",
     forgotTitle: "Forgot password",
     resetTitle: "Reset password",
-    email: "Email",
+    email: "Email or Mobile No.",
     password: "Password",
     fullName: "Full name",
     confirmPassword: "Confirm password",

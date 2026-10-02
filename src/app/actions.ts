@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createUser, EmailTakenError, getUserByEmail, getUserById, setPassword } from "@/lib/db";
+import { createUser, EmailTakenError, getUserByEmailOrPhone, getUserById, setPassword } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setSession, clearSession, makeResetToken, verifyResetToken } from "@/lib/session";
 import { sendMail } from "@/lib/mailer";
@@ -86,20 +86,20 @@ export async function registerUser(
 export type LoginState = { error: string } | null;
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const email = str(formData.get("email")).toLowerCase();
+  const emailOrPhone = str(formData.get("email")).toLowerCase();
   const password = str(formData.get("password"));
   const m = (await getDict()).msg;
 
-  if (!email || !password) return { error: m.enterEmailPassword };
+  if (!emailOrPhone || !password) return { error: m.enterEmailPassword };
 
   // Slow down password guessing: per account and per network address.
   const ip = await clientIp();
   const allowed =
-    (await hit(`login:ip:${ip}`, 30, 15 * MINUTE)) && (await hit(`login:email:${email}`, 8, 15 * MINUTE));
+    (await hit(`login:ip:${ip}`, 30, 15 * MINUTE)) && (await hit(`login:email:${emailOrPhone}`, 8, 15 * MINUTE));
   if (!allowed) return { error: m.tooManyLogins };
 
-  const user = await getUserByEmail(email);
-  // Same message whether the email is unknown or the password is wrong.
+  const user = await getUserByEmailOrPhone(emailOrPhone);
+  // Same message whether the email/phone is unknown or the password is wrong.
   if (!user || !(await verifyPassword(password, user.password_hash))) {
     return { error: m.badLogin };
   }
@@ -108,7 +108,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (user.status === "rejected") return { error: m.rejected };
   if (user.status === "blocked") return { error: m.blocked };
 
-  await clearHits(`login:email:${email}`);
+  await clearHits(`login:email:${emailOrPhone}`);
   await setSession(user.id, user.session_version);
   redirect(user.role === "member" ? "/portal" : "/admin");
 }
