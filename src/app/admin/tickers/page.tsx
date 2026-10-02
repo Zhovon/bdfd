@@ -26,10 +26,17 @@ export default async function TickersAdminPage() {
             name="message"
             required
             placeholder="e.g., Oct 25 – Registration deadline!"
+            className="w-full rounded-lg border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand mb-4"
+          />
+          <span className="log-label text-field block mb-2">Optional Link URL</span>
+          <input
+            name="link"
+            type="url"
+            placeholder="https://example.com or /portal/content/123"
             className="w-full rounded-lg border border-line bg-husk px-3 py-2 text-field outline-none focus:border-brand"
           />
         </label>
-        <button type="submit" className="log-label rounded-lg bg-brand px-5 py-2 text-husk transition-colors hover:bg-brand-hover">
+        <button type="submit" className="log-label rounded-lg bg-brand px-5 py-2 text-white transition-colors hover:bg-field">
           Add Ticker
         </button>
       </form>
@@ -41,7 +48,14 @@ export default async function TickersAdminPage() {
           rows.map((row) => (
             <div key={row.id} className="flex items-center justify-between gap-4 bg-surface border border-line rounded-xl p-4 shadow-sm">
               <div className="flex-1">
-                <p className={`text-field font-medium ${!row.active && "opacity-50 line-through"}`}>{row.message}</p>
+                <p className={`text-field font-medium ${!row.active && "opacity-50 line-through"}`}>
+                  {row.message}
+                </p>
+                {row.link && (
+                  <a href={row.link} target="_blank" rel="noreferrer" className="text-brand text-sm block mt-1 hover:underline">
+                    {row.link}
+                  </a>
+                )}
                 <p className="text-stone text-sm mt-1">{new Date(row.created_at).toLocaleString()}</p>
               </div>
               <div className="flex gap-2">

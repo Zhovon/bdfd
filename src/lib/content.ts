@@ -712,6 +712,7 @@ export async function getGalleryImagesPaged(page: number): Promise<Paged<Gallery
 export type Ticker = {
   id: number;
   message: string;
+  link: string | null;
   active: boolean;
   created_at: Date;
 };
@@ -719,7 +720,7 @@ export type Ticker = {
 export async function listTickers(): Promise<Ticker[]> {
   await ensureSchema();
   const { rows } = await pool.query<Ticker>(
-    `SELECT id, message, active, created_at FROM tickers WHERE active = true ORDER BY created_at DESC`
+    `SELECT id, message, link, active, created_at FROM tickers WHERE active = true ORDER BY created_at DESC`
   );
   return rows;
 }

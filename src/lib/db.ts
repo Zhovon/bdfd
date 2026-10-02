@@ -354,10 +354,13 @@ async function migrate(db: Queryable): Promise<void> {
     CREATE TABLE IF NOT EXISTS tickers (
       id         SERIAL PRIMARY KEY,
       message    TEXT NOT NULL,
+      link       TEXT,
       active     BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  // If the table already exists, just in case:
+  await db.query(`ALTER TABLE tickers ADD COLUMN IF NOT EXISTS link TEXT`);
 
   await ensureAdmin(db);
   await seedPaymentMethods(db);

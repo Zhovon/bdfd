@@ -363,10 +363,11 @@ export async function savePaymentMethod(formData: FormData) {
 export async function createTicker(formData: FormData): Promise<void> {
   await requireAdmin();
   const message = str(formData.get("message"));
+  const link = str(formData.get("link")) || null;
   if (!message) return;
   const { pool, ensureSchema } = await import("@/lib/db");
   await ensureSchema();
-  await pool.query(`INSERT INTO tickers (message) VALUES ($1)`, [message]);
+  await pool.query(`INSERT INTO tickers (message, link) VALUES ($1, $2)`, [message, link]);
   revalidatePath("/admin/tickers");
   revalidatePath("/portal");
 }
