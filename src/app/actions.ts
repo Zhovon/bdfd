@@ -135,7 +135,7 @@ export async function requestPasswordReset(_prev: ForgotState, formData: FormDat
   }
   // Cap emails per account without revealing whether the account exists.
   const underCap = await hit(`forgot:email:${email}`, 3, 60 * MINUTE);
-  const user = underCap ? await getUserByEmail(email) : null;
+  const user = underCap ? await getUserByEmailOrPhone(email) : null;
 
   // Only send for real, approved accounts — but always show the same message.
   if (user && user.status === "approved") {
