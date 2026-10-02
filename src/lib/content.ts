@@ -708,3 +708,18 @@ export async function getGalleryImagesPaged(page: number): Promise<Paged<Gallery
     pageCount
   };
 }
+
+export type Ticker = {
+  id: number;
+  message: string;
+  active: boolean;
+  created_at: Date;
+};
+
+export async function listTickers(): Promise<Ticker[]> {
+  await ensureSchema();
+  const { rows } = await pool.query<Ticker>(
+    `SELECT id, message, active, created_at FROM tickers WHERE active = true ORDER BY created_at DESC`
+  );
+  return rows;
+}

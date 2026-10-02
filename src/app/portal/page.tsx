@@ -6,6 +6,7 @@ import { categoryMeta } from "@/lib/site";
 import { getDict, type Dict } from "@/lib/i18n";
 import PostBoard from "@/components/PostBoard";
 import { thumbUrl } from "@/lib/media";
+import ScrollingTicker from "@/components/ScrollingTicker";
 
 const rel = (d: Date, t: Dict) => {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
@@ -39,8 +40,9 @@ export default async function PortalDashboard() {
 
   return (
     <div>
+      <ScrollingTicker />
       {/* Greeting */}
-      <div className="flex items-center gap-4 border-b border-line pb-6">
+      <div className="flex items-center gap-4 border-b border-line pb-6 pt-4">
         <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-field text-lg font-bold text-husk">
           {user?.avatar_url ? (
             /* eslint-disable-next-line @next/next/no-img-element */

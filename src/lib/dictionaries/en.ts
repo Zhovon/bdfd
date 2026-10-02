@@ -398,6 +398,7 @@ export const en = {
       polls: "Polls",
       payments: "Payments",
       accounts: "Accounts",
+      tickers: "Tickers",
     },
     membership: "Membership",
     downloadCsv: "Download CSV",

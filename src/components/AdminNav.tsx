@@ -11,6 +11,7 @@ const tabs = [
   { href: "/admin/polls", label: "polls", adminOnly: false },
   { href: "/admin/donations", label: "payments", adminOnly: false },
   { href: "/admin/payments", label: "accounts", adminOnly: true },
+  { href: "/admin/tickers", label: "tickers", adminOnly: true },
 ] as const;
 
 export default function AdminNav({ role }: { role: string }) {

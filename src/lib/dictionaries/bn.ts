@@ -394,6 +394,7 @@ export const bn: typeof en = {
       polls: "ভোট",
       payments: "পেমেন্ট",
       accounts: "অ্যাকাউন্ট",
+      tickers: "টিকার",
     },
     membership: "সদস্যপদ",
     downloadCsv: "CSV ডাউনলোড",

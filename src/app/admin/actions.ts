@@ -357,3 +357,34 @@ export async function savePaymentMethod(formData: FormData) {
   });
   revalidatePath("/admin/payments");
 }
+
+/* ------------------------------- Tickers -------------------------------- */
+
+export async function createTicker(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const message = str(formData.get("message"));
+  if (!message) return;
+  const { pool, ensureSchema } = await import("@/lib/db");
+  await ensureSchema();
+  await pool.query(`INSERT INTO tickers (message) VALUES ($1)`, [message]);
+  revalidatePath("/admin/tickers");
+  revalidatePath("/portal");
+}
+
+export async function toggleTicker(id: number, active: boolean): Promise<void> {
+  await requireAdmin();
+  const { pool, ensureSchema } = await import("@/lib/db");
+  await ensureSchema();
+  await pool.query(`UPDATE tickers SET active = $2 WHERE id = $1`, [id, active]);
+  revalidatePath("/admin/tickers");
+  revalidatePath("/portal");
+}
+
+export async function removeTicker(id: number): Promise<void> {
+  await requireAdmin();
+  const { pool, ensureSchema } = await import("@/lib/db");
+  await ensureSchema();
+  await pool.query(`DELETE FROM tickers WHERE id = $1`, [id]);
+  revalidatePath("/admin/tickers");
+  revalidatePath("/portal");
+}
