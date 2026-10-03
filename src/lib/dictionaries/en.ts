@@ -70,7 +70,7 @@ export const en = {
   boards: {
     association: {
       title: "Association Information",
-      blurb: "About the association and committee, official notices, and neutral election information.",
+      blurb: "Organizational information for the welfare of the members of the Bangladesh Food Inspectors Association and Food Officers Association.",
       label: "Association",
     },
     welfare: {
